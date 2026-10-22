@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Tanggal** | 22 Oktober 2026 |
+| **Tanggal** | 22 Oktober 2026 (revisi 2) |
 | **Commit yang diaudit** | `84bcdd4` ("first commit") |
 | **Branch audit** | `claude/audit-falcon-lms-wu1e2m` |
 | **Lingkup** | Kondisi kode saat ini, analisis kekurangan dibanding goal produk, rancangan arsitektur & UX, roadmap |
@@ -10,24 +10,29 @@
 
 ### Goal produk (sesuai brief)
 
-Falcon LMS adalah LMS dengan **tampilan dan cara kerja seperti Google Drive**. Pusatnya tombol besar
-**+ Baru** yang *paham posisi halaman*:
+Falcon LMS adalah LMS **khusus intranet sekolah** dengan **tampilan dan cara kerja seperti Google Drive**.
+Pusatnya tombol besar **+ Baru** yang *paham posisi halaman*:
 
-- di **Beranda/Pustaka**, materi masuk ke **Pustaka** (tempat penyimpanan materi);
-- di dalam **Kelas**, materi masuk ke kelas tersebut, termasuk ke folder yang sedang dibuka.
+- di **Beranda/Pustaka**, materi masuk ke **Pustaka** (tempat penyimpanan materi, memakai folder ala Drive);
+- di dalam **Kelas**, materi masuk ke kelas tersebut, ke **topik** yang sedang dibuka.
 
-Isinya menggabungkan fitur terbaik **Schoology** (pustaka materi yang bisa dipakai ulang, buku nilai, akses orang tua),
-**kesederhanaan Google Classroom** (tampilan dan alur kerja), dan **kedalaman Canvas LMS** (modul, SpeedGrader, rubrik, kalender).
+Isi kelas diatur **persis seperti Google Classroom**: tidak ada folder bertingkat, semua materi dan tugas
+dikelompokkan dengan **Topik**. Fitur lainnya mengambil yang terbaik dari **Schoology** (pustaka materi yang bisa
+dipakai ulang, buku nilai, akses orang tua) dan **Canvas LMS** (SpeedGrader, rubrik, kalender), tanpa mengorbankan
+kesederhanaan Classroom.
 
 ### Keputusan yang sudah disepakati
 
 | # | Topik | Keputusan |
 |---|---|---|
 | 1 | Lingkup | Audit + rancangan dulu, lalu implementasi menunggu persetujuan |
-| 2 | Pustaka | Dua lapis: **Pustaka Saya** (pribadi guru) dan **Pustaka Sekolah** (bersama) |
+| 2 | Pustaka | Dua lapis: **Pustaka Saya** (pribadi guru) dan **Pustaka Sekolah** (bersama). Keduanya memakai folder ala Drive |
 | 3 | Peran | Admin, Guru, Siswa sejak awal. **Orang Tua** di tahap berikutnya |
 | 4 | + Baru di dalam kelas | Tersimpan di kelas, dengan opsi centang **"Simpan juga ke Pustaka Saya"** |
 | 5 | Bahasa | Bahasa Indonesia, disiapkan i18n supaya bisa ditambah bahasa lain |
+| 6 | Jaringan | **Murni intranet**: server di sekolah, tanpa ketergantungan ke internet saat aplikasi berjalan |
+| 7 | Isi kelas | **Persis Google Classroom**: tab Forum, Tugas Kelas, Anggota, Nilai. Materi dikelompokkan dengan **Topik** (satu tingkat), bukan folder |
+| 8 | Jumlah sekolah | Satu sekolah per instalasi (konsekuensi dari keputusan 6) |
 
 ---
 
@@ -37,15 +42,17 @@ Isinya menggabungkan fitur terbaik **Schoology** (pustaka materi yang bisa dipak
    satu halaman `Welcome.vue`, satu model `User`, migrasi bawaan, dan satu route `/`. Belum ada login, kelas,
    pustaka, materi, maupun tombol + Baru. Progres terhadap goal: **0%**.
 2. **Fondasi teknisnya bagus dan modern.** Laravel 13, Inertia 3, Vue 3.5, TypeScript strict, Tailwind 4, Pest,
-   PHPStan level 7, Pint, dan linter yang menolak warning. Tidak perlu ganti stack.
+   PHPStan level 7, Pint, dan linter yang menolak warning. Semuanya bisa berjalan penuh di server lokal tanpa internet.
+   Tidak perlu ganti stack.
 3. **CI di `main` merah sejak commit pertama.** Job `ci` gagal dalam 3 detik tanpa pernah mendapat runner
    (detail di [F2](#f2-ci-merah-sejak-commit-pertama-job-tidak-pernah-berjalan)). Ini harus diperbaiki sebelum fitur apa pun dibangun.
-4. **Versi PHP tidak konsisten.** `composer.json` mengizinkan PHP 8.3, tapi `composer.lock` butuh PHP ≥ 8.4.1
-   ([F1](#f1-versi-php-di-composerjson-tidak-sesuai-composerlock)).
-5. **Kunci arsitektur untuk tombol + Baru pintar** adalah satu konsep **Ruang (Space)**: Pustaka Saya,
-   Pustaka Sekolah, dan setiap Kelas adalah *Space*. Semua folder dan item berada di dalam satu Space. Setiap
-   halaman tahu Space dan folder yang sedang dibuka, jadi + Baru cukup mengirim keduanya ke **satu endpoint**.
-   Detail di [§3](#3-rancangan-arsitektur).
+4. **Ada dua hal di kode yang diam-diam butuh internet:** cek password bocor yang memanggil API eksternal
+   ([F16](#f16-cek-password-bocor-memanggil-api-internet)) dan font yang diunduh saat build
+   ([F17](#f17-build-frontend-mengunduh-font-dari-internet)). Untuk intranet, keduanya perlu disesuaikan.
+5. **Kunci arsitektur untuk tombol + Baru pintar** adalah satu konsep **Ruang (Space)**. Pustaka Saya,
+   Pustaka Sekolah, dan setiap Kelas adalah Space. Bedanya hanya cara mengelompokkan isi: **Pustaka memakai folder**
+   (ala Drive), **Kelas memakai topik** (ala Classroom). Setiap halaman tahu Space dan folder atau topik yang sedang
+   dibuka, jadi + Baru cukup mengirim keduanya ke **satu endpoint**. Detail di [§3](#3-rancangan-arsitektur).
 
 ### Skor kesiapan per area
 
@@ -55,8 +62,9 @@ Isinya menggabungkan fitur terbaik **Schoology** (pustaka materi yang bisa dipak
 | CI/CD | 🔴 Rusak | Job tidak berjalan; Dependabot hanya untuk GitHub Actions |
 | Autentikasi & peran | 🔴 Belum ada | Starter kit "blank" tidak menyertakan login |
 | Model data LMS | 🔴 Belum ada | Hanya tabel `users` |
-| UI/UX ala Drive | 🔴 Belum ada | Belum ada layout, komponen UI, maupun ikon |
+| UI/UX ala Drive + Classroom | 🔴 Belum ada | Belum ada layout, komponen UI, maupun ikon |
 | Penyimpanan file | 🟠 Belum siap | Disk `local` tanpa aturan akses, batas ukuran, atau preview |
+| Kesiapan intranet | 🟠 Perlu penyesuaian | Cek password ke API internet, font diunduh saat build, belum ada panduan instalasi offline |
 | Testing | 🟠 Minim | Dua test contoh bawaan |
 | Lokalisasi | 🟠 Belum diset | Locale `en`, zona waktu `UTC` |
 | Keamanan dasar | 🟢 Cukup | Password kuat & proteksi perintah destruktif di production sudah aktif |
@@ -99,7 +107,7 @@ Isinya menggabungkan fitur terbaik **Schoology** (pustaka materi yang bisa dipak
 | `npm ci` | ✅ Lulus | |
 | `npm run check` (format + lint) | ✅ Lulus | 14 file rapi, 0 warning |
 | `npm run types:check` (`vue-tsc`) | ✅ Lulus | Tapi lihat F5: sebagian tipe tidak benar-benar dicek |
-| `npm run build` | ⚠️ Butuh `vendor/` | Plugin Wayfinder menjalankan `php artisan wayfinder:generate`, jadi build gagal sebelum `composer install`. Wajar, tapi belum didokumentasikan |
+| `npm run build` | ⚠️ Butuh `vendor/` dan internet | Plugin Wayfinder menjalankan `php artisan wayfinder:generate`, jadi build gagal sebelum `composer install`. Font juga diunduh saat build (F17) |
 | `composer install` di PHP 8.3 | ❌ Gagal | `symfony/*` 8.1 butuh PHP ≥ 8.4.1 (F1) |
 | Pint, PHPStan, Pest | ⏸️ Tidak bisa dijalankan di lingkungan audit | PHP lokal 8.3 dan sebagian unduhan paket dari GitHub gagal. Perlu dicek ulang setelah CI pulih |
 | GitHub Actions `tests` di `main` | ❌ Gagal | Run [#1](https://github.com/alaihsan/falconlms/actions/runs/39601158566) dan PR Dependabot #1 gagal dengan pola yang sama (F2) |
@@ -108,12 +116,13 @@ Isinya menggabungkan fitur terbaik **Schoology** (pustaka materi yang bisa dipak
 
 - `DB::prohibitDestructiveCommands()` aktif di production, jadi `migrate:fresh` dan sejenisnya tidak bisa
   jalan tanpa sengaja (`app/Providers/AppServiceProvider.php`).
-- Aturan password kuat di production: minimal 12 karakter, huruf besar-kecil, angka, simbol, dan cek kebocoran.
+- Aturan password kuat di production: minimal 12 karakter, huruf besar-kecil, angka, dan simbol.
 - `CarbonImmutable` sebagai default tanggal, sehingga lebih aman dari bug mutasi tanggal.
 - Workflow CI mengunci action ke SHA, memakai `persist-credentials: false`, dan `permissions: contents: read`.
 - TypeScript `strict`, PHPStan level 7, linter `denyWarnings` + `typeAware`.
-- Endpoint health check `/up` sudah tersedia untuk monitoring.
+- Endpoint health check `/up` sudah tersedia untuk monitoring server sekolah.
 - Wayfinder memberi route bertipe di frontend, cocok untuk banyak endpoint + Baru nanti.
+- Queue, cache, dan session memakai database, jadi instalasi intranet minimal tidak butuh Redis.
 
 ### 2.5 Temuan
 
@@ -122,9 +131,9 @@ Tingkat: **Tinggi** = menghambat pengembangan atau berisiko nyata · **Sedang** 
 
 #### F1. Versi PHP di `composer.json` tidak sesuai `composer.lock`
 **Tinggi.** `composer.json:12` menulis `"php": "^8.3"`, tapi paket yang terkunci (`symfony/*` v8.1, `phpunit/phpunit` 13,
-`pestphp/pest` 5) butuh PHP ≥ 8.4.1. Developer dengan PHP 8.3 akan gagal di `composer install` dengan pesan yang
-membingungkan, padahal `composer.json` bilang 8.3 didukung.
-**Perbaikan:** ubah ke `"php": "^8.4"`, dan samakan versi di CI (sudah 8.4), Sail/Docker, serta server production.
+`pestphp/pest` 5) butuh PHP ≥ 8.4.1. Developer atau server sekolah dengan PHP 8.3 akan gagal di `composer install`
+dengan pesan yang membingungkan, padahal `composer.json` bilang 8.3 didukung.
+**Perbaikan:** ubah ke `"php": "^8.4"`, dan samakan versi di CI (sudah 8.4), Sail/Docker, serta server sekolah.
 
 #### F2. CI merah sejak commit pertama: job tidak pernah berjalan
 **Tinggi.** Job `ci` di run `tests` #1 (`main`) selesai dalam 3 detik dengan `runner_id: 0`, tanpa langkah dan tanpa log.
@@ -136,23 +145,33 @@ action yang direferensikan tidak bisa di-resolve.
 lint, tipe, Pint, PHPStan, dan Pest.
 
 #### F3. Belum ada autentikasi dan peran
-**Tinggi.** Starter kit *blank* tidak menyertakan login, registrasi, reset password, atau verifikasi email.
-LMS butuh semua itu, ditambah peran (Admin, Guru, Siswa, lalu Orang Tua).
-**Perbaikan:** pasang **Laravel Fortify** (headless) dengan halaman Inertia/Vue, atau ambil scaffolding auth dari
-*Laravel Vue Starter Kit* versi non-blank. Peran disimpan sebagai enum di `users.role`, dan otorisasi memakai **Policy** Laravel.
-Untuk sekolah yang memakai Google Workspace for Education, tambahkan **Masuk dengan Google** (Laravel Socialite) di v1.
+**Tinggi.** Starter kit *blank* tidak menyertakan login, reset password, atau manajemen akun. LMS butuh semua itu,
+ditambah peran (Admin, Guru, Siswa, lalu Orang Tua). Di intranet ada dua hal tambahan:
+
+- Banyak siswa tidak punya email, dan server intranet belum tentu bisa mengirim email.
+- Reset password lewat tautan email tidak bisa diandalkan.
+
+**Perbaikan:** pasang **Laravel Fortify** (headless) dengan halaman Inertia/Vue, tapi:
+- login memakai **username atau NIS/NIP**, email opsional;
+- **reset password oleh admin atau wali kelas**, dengan wajib ganti password saat login pertama;
+- impor akun massal dari CSV/Excel (data Dapodik biasanya sudah tersedia dalam format ini).
+
+Peran disimpan sebagai enum di `users.role`, dan otorisasi memakai **Policy** Laravel.
 
 #### F4. Penyimpanan file belum siap untuk LMS
 **Tinggi.** `FILESYSTEM_DISK=local` (`.env.example:37`). Belum ada aturan siapa boleh mengunduh, batas ukuran,
 whitelist tipe file, preview, maupun kuota. Untuk aplikasi ala Drive, ini inti produk.
-**Perbaikan:** simpan semua upload di disk **privat**, sajikan lewat controller yang mengecek Policy lalu memberi
-**signed temporary URL**. Pakai penyimpanan S3-compatible (S3, R2, atau MinIO) di production. Proses thumbnail
-dan preview lewat queue. Atur `upload_max_filesize`/`post_max_size` PHP dan batas di validasi.
+**Perbaikan:**
+- Simpan semua upload di disk **privat** di server sekolah. Untuk kapasitas besar bisa pakai MinIO on-premise.
+- Sajikan file lewat controller yang mengecek Policy dulu. File besar (video) diteruskan ke Nginx lewat
+  `X-Accel-Redirect`, supaya PHP tidak terbebani dan video bisa di-*seek*.
+- Proses thumbnail dan preview lewat queue.
+- Atur `upload_max_filesize`/`post_max_size` PHP dan batas di validasi.
 
 #### F5. Tipe shared props tidak sesuai data dari server
 **Sedang.**
 - `resources/js/types/auth.ts:13` menulis `user: User` (tidak boleh null), padahal server mengirim `$request->user()`
-  yang bernilai `null` untuk tamu. Komponen bisa crash saat mengakses `auth.user.name` di halaman publik.
+  yang bernilai `null` untuk tamu. Komponen bisa crash saat mengakses `auth.user.name` di halaman login.
 - `resources/js/types/global.d.ts:22` mendeklarasikan `sidebarOpen`, tapi server tidak pernah mengirimnya.
 - `global.d.ts:34-36` memakai `Router`, `Page`, dan `createHeadManager` tanpa import. Ini tidak ketahuan karena
   `skipLibCheck: true` (`tsconfig.json:119`) membuat file `.d.ts` tidak dicek, sehingga tipenya diam-diam menjadi `any`.
@@ -164,7 +183,7 @@ import tipe yang dipakai dari `@inertiajs/core`.
 **Sedang.** `HandleInertiaRequests.php:42` membagikan objek `User` utuh. Saat ini aman karena `password` dan
 `remember_token` disembunyikan. Tapi nanti `users` akan punya kolom seperti peran, NIS/NISN, telepon, dan relasi orang tua.
 Semua kolom baru otomatis ikut terkirim ke browser.
-**Perbaikan:** kirim field secara eksplisit, misalnya `['id', 'name', 'email', 'role', 'avatar_url']`, atau
+**Perbaikan:** kirim field secara eksplisit, misalnya `['id', 'name', 'username', 'role', 'avatar_url']`, atau
 lewat `JsonResource`.
 
 #### F7. Identitas, bahasa, dan zona waktu masih bawaan Laravel
@@ -174,8 +193,8 @@ lewat `JsonResource`.
 - `APP_LOCALE=en` dan `APP_FAKER_LOCALE=en_US`.
 
 **Perbaikan:** `APP_NAME="Falcon LMS"`, `timezone` dari env dengan default `Asia/Jakarta`, `APP_LOCALE=id`,
-`APP_FAKER_LOCALE=id_ID`, dan pasang file terjemahan `lang/id`. Simpan waktu di database dalam UTC, tapi tampilkan
-sesuai zona waktu sekolah atau pengguna.
+`APP_FAKER_LOCALE=id_ID`, dan pasang file terjemahan `lang/id`. Pastikan jam server disinkronkan dengan NTP
+lokal, karena tenggat tugas bergantung pada jam server.
 
 #### F8. Dua package manager JavaScript sekaligus
 **Sedang.** Ada `package-lock.json` (npm) dan `pnpm-workspace.yaml` (pnpm). Script memakai npm, dan
@@ -193,14 +212,14 @@ versi paket yang berbeda dari lockfile.
 **Perbaikan:** hapus contoh-contoh itu. Wajibkan Feature test untuk setiap aturan bisnis penting, terutama
 **aturan tujuan simpan + Baru** dan **Policy akses** (siswa tidak boleh melihat kelas lain, dan seterusnya).
 
-#### F11. Belum ada README
+#### F11. Belum ada README dan panduan instalasi
 **Rendah.** Belum ada dokumentasi cara setup. Ada beberapa jebakan yang perlu ditulis: PHP 8.4, `composer install`
-harus jalan sebelum `npm run build` karena Wayfinder, dan `composer dev` untuk development.
+harus jalan sebelum `npm run build` karena Wayfinder, dan `composer dev` untuk development. Untuk intranet,
+perlu juga panduan instalasi server sekolah dan cara memperbarui aplikasi tanpa internet (lihat [§3.7](#37-deployment-intranet)).
 
 #### F12. Font eksternal di halaman sambutan
-**Rendah.** `Welcome.vue:7-8` memuat font Inter dari `rsms.me`, padahal aplikasi memakai Instrument Sans lewat
-Bunny Fonts (`vite.config.ts:15`). Permintaan ke pihak ketiga ini tidak perlu. Halaman ini akan diganti, jadi
-cukup dihapus saat membuat Beranda.
+**Rendah.** `Welcome.vue:7-8` memuat font Inter dari `rsms.me`. Di intranet permintaan ini gagal, sehingga halaman
+memakai font cadangan. Halaman ini akan diganti, jadi cukup dihapus saat membuat Beranda.
 
 #### F13. Kode dark mode yang tidak terpakai
 **Rendah.** `resources/views/app.blade.php:2` membaca `$appearance`, tapi tidak ada yang mengisinya.
@@ -215,23 +234,55 @@ persis (bagus), tapi API pra-1.0 bisa berubah. Pantau changelog-nya saat Dependa
 (ada `.codex/config.toml` dengan Laravel Boost), konvensi proyek tidak tersimpan di repo. Pertimbangkan untuk
 meng-commit satu file panduan proyek.
 
+#### F16. Cek password bocor memanggil API internet
+**Sedang.** Di production, aturan password memakai `->uncompromised()` (`app/Providers/AppServiceProvider.php:46`).
+Aturan ini mengirim potongan hash password ke `api.pwnedpasswords.com`. Di intranet tanpa internet:
+- cek ini **tidak pernah benar-benar berjalan**, karena Laravel menganggap password lolos saat API gagal dihubungi;
+- tergantung konfigurasi jaringan, setiap simpan password bisa **menunggu sampai batas timeout** sebelum gagal.
+
+**Perbaikan:** hapus `->uncompromised()`. Sebagai gantinya, tolak password yang sama dengan username atau NIS,
+dan sediakan daftar password umum yang dilarang secara lokal. Pertimbangkan juga aturan yang lebih ramah untuk
+siswa SD/SMP (misalnya minimal 8 karakter tanpa wajib simbol), karena 12 karakter dengan simbol sering membuat
+siswa lupa password dan membebani admin.
+
+#### F17. Build frontend mengunduh font dari internet
+**Sedang.** `vite.config.ts:15` memakai `bunny('Instrument Sans')`. Saat build, plugin mengunduh font dari
+`fonts.bunny.net`, menyimpannya di `node_modules/.cache/laravel-vite-plugin/fonts`, lalu ikut membundelnya ke
+`public/build`. Jadi **aplikasi yang sudah di-build tidak butuh internet**, tapi **proses build butuh internet**.
+Build di server sekolah yang offline akan gagal.
+**Perbaikan:** pilih salah satu:
+- simpan file font di repo (atau pakai paket npm `@fontsource/instrument-sans`) supaya build bisa offline; atau
+- selalu build di mesin yang punya internet, lalu kirim hasilnya sebagai paket rilis ([§3.7](#37-deployment-intranet)).
+
+Aturan umum untuk seluruh proyek: **tidak boleh ada aset dari CDN** (font, ikon, skrip, embed YouTube/Google)
+di halaman aplikasi.
+
 ---
 
 ## 3. Rancangan arsitektur
 
-### 3.1 Konsep inti: Space → Folder → Item
+### 3.1 Konsep inti: Space, lalu Folder (Pustaka) atau Topik (Kelas)
 
 Supaya + Baru selalu tahu ke mana harus menyimpan, **setiap halaman konten berada di dalam tepat satu Space**:
 
-| Space (`spaces.kind`) | Pemilik | Contoh halaman |
-|---|---|---|
-| `personal_library` | Satu guru (dibuat otomatis saat akun guru dibuat) | Beranda, Pustaka Saya › folder apa pun |
-| `school_library` | Sekolah (dikelola admin/kurator) | Pustaka Sekolah › folder apa pun |
-| `course` | Kelas (guru pengampu) | Kelas X IPA 1 › Materi › folder apa pun |
+| Space (`spaces.kind`) | Pemilik | Pengelompokan isi | Contoh halaman |
+|---|---|---|---|
+| `personal_library` | Satu guru (dibuat otomatis) | **Folder bertingkat** ala Drive | Beranda, Pustaka Saya › Matematika › Bab 1 |
+| `school_library` | Sekolah (dikelola kurator) | **Folder bertingkat** ala Drive | Pustaka Sekolah › Kurikulum Merdeka › Kelas X |
+| `course` | Kelas (guru pengampu) | **Topik satu tingkat** ala Classroom | X IPA 1 › Tugas Kelas › Bab 1 - Aljabar |
 
-Di dalam Space ada **Folder** (bertingkat) dan **Item**. Item punya tipe: `file`, `material` (halaman teks kaya),
-`assignment`, `quiz`, `link`, dan `discussion`. Model ini sama dengan Drive (Space ≈ "Drive Saya" / "Drive Bersama",
-Folder ≈ folder, Item ≈ file). Dengan begitu, Pustaka dan Kelas memakai **satu komponen tampilan yang sama**.
+**Kenapa dibedakan?** Pustaka adalah gudang materi guru yang bisa berisi ratusan file, jadi folder memang dibutuhkan.
+Kelas adalah tempat siswa belajar. Siswa harus bisa melihat semua materi dan tugas **dalam satu halaman tanpa
+masuk-keluar folder**, persis seperti Tugas Kelas di Classroom.
+
+**Isi kelas mengikuti Classroom:**
+- Setiap isi kelas adalah **postingan** bertipe Materi, Tugas, Tugas kuis, atau Pertanyaan.
+- File dan tautan bukan isi yang berdiri sendiri, melainkan **lampiran** sebuah postingan.
+- Setiap postingan boleh punya **satu topik** atau tanpa topik.
+- Urutan topik dan urutan postingan di dalam topik diatur dengan seret (drag).
+
+**Isi pustaka mengikuti Drive:** folder, file lepas, tautan, serta materi, tugas, dan kuis yang berfungsi sebagai
+**templat** untuk disalin ke kelas.
 
 ### 3.2 Model data (usulan)
 
@@ -240,26 +291,28 @@ erDiagram
     users ||--o{ space_members : "anggota"
     spaces ||--o{ space_members : "punya"
     spaces ||--o| courses : "detail kelas"
-    spaces ||--o{ folders : "berisi"
+    spaces ||--o{ folders : "hanya Pustaka"
     folders ||--o{ folders : "sub-folder"
+    spaces ||--o{ topics : "hanya Kelas"
     spaces ||--o{ items : "berisi"
-    folders ||--o{ items : "berisi"
+    folders ||--o{ items : "di Pustaka"
+    topics ||--o{ items : "di Kelas"
     items ||--o{ attachments : "lampiran"
     items ||--o| assignments : "detail tugas"
     items ||--o| quizzes : "detail kuis (v1)"
     items }o--o| items : "disalin dari (source_item_id)"
     assignments ||--o{ submissions : "pengumpulan"
     users ||--o{ submissions : "siswa"
-    spaces ||--o{ posts : "stream kelas"
+    spaces ||--o{ posts : "Forum kelas"
     users ||--o{ guardian_links : "orang tua (v2)"
 
     users {
         bigint id
         string name
-        string email
+        string username "login dengan username/NIS/NIP"
+        string email "opsional"
         enum role "admin|teacher|student|parent"
-        string locale
-        string timezone
+        boolean must_change_password
     }
     spaces {
         bigint id
@@ -273,7 +326,8 @@ erDiagram
         string join_code "kode kelas ala Classroom"
         string section
         string subject
-        string color
+        string room
+        string theme_color
     }
     space_members {
         bigint space_id
@@ -286,25 +340,32 @@ erDiagram
         bigint parent_id
         string name
         string path "materialized path /1/5/9/"
-        boolean is_module "tampil sebagai Modul ala Canvas (v1)"
+    }
+    topics {
+        bigint id
+        bigint space_id
+        string name
         int position
     }
     items {
         bigint id
         bigint space_id
-        bigint folder_id
-        enum type "file|material|assignment|quiz|link|discussion"
+        bigint folder_id "hanya di Pustaka"
+        bigint topic_id "hanya di Kelas, boleh null"
+        enum type "material|assignment|quiz|question|file|link"
         string title
         longtext body
         bigint source_item_id
         bigint created_by
-        timestamp published_at
+        timestamp published_at "null = draf"
+        timestamp scheduled_at "jadwal terbit"
         timestamp deleted_at "Sampah"
         int position
     }
     attachments {
         bigint id
         bigint item_id
+        enum kind "file|link|internal_video"
         string disk
         string path
         string mime
@@ -322,161 +383,228 @@ erDiagram
         bigint id
         bigint assignment_id
         bigint student_id
-        enum status "draft|submitted|late|graded|returned"
+        enum status "assigned|turned_in|late|graded|returned"
         decimal score
-        text feedback
+        text private_comment
     }
 ```
 
 Catatan desain:
 
-- **Folder bertingkat** memakai `parent_id` dan kolom `path` (misalnya `/1/5/9/`). Breadcrumb, pindah folder,
-  dan "isi semua sub-folder" cukup dengan satu query `LIKE '/1/5/%'`, tanpa rekursi.
-- **Modul ala Canvas** tidak menjadi konsep baru. Modul adalah folder dengan `is_module = true`, ditambah urutan dan
-  syarat selesai. Model mental pengguna tetap "folder", sesuai prinsip kesederhanaan.
-- **Sampah ala Drive** cukup dengan *soft delete* (`deleted_at`) dan pembersihan otomatis setelah 30 hari.
-- **Satu sekolah dulu.** Multi-sekolah (tenant) bisa ditambah nanti dengan kolom `school_id` di `spaces` dan `users`.
+- **Satu tabel `items` untuk Pustaka dan Kelas.** Di Pustaka, item memakai `folder_id`. Di Kelas, item memakai
+  `topic_id`. Aturan ini dijaga di FormRequest dan dengan constraint di database.
+- **Tipe `file` dan `link` lepas hanya ada di Pustaka.** Di kelas, file dan tautan selalu menjadi lampiran Materi
+  atau Tugas, sama seperti Classroom.
+- **Status pengumpulan memakai istilah Classroom:** Ditugaskan, Diserahkan, Terlambat, Dinilai, Dikembalikan.
+- **Folder Pustaka** memakai `parent_id` dan kolom `path` (misalnya `/1/5/9/`). Breadcrumb dan pindah folder cukup
+  dengan satu query `LIKE '/1/5/%'`, tanpa rekursi.
+- **Modul ala Canvas tidak dibuat sebagai konsep baru.** Kalau nanti dibutuhkan, cukup jadi opsi di Topik:
+  "buka topik berikutnya setelah topik ini selesai" (v2, disembunyikan di pengaturan lanjutan).
+- **Sampah** cukup dengan *soft delete* (`deleted_at`) dan pembersihan otomatis setelah 30 hari.
 
 ### 3.3 Logika tombol + Baru
 
 **Prinsip:** frontend tidak menebak. Setiap controller halaman mengirim prop `context`, dan + Baru hanya membacanya.
 
 ```php
-// Contoh prop yang dikirim setiap halaman konten
+// Di halaman Kelas › Tugas Kelas, saat topik "Bab 1 - Aljabar" sedang dipilih
 'context' => [
     'space'  => ['id' => 12, 'kind' => 'course', 'name' => 'X IPA 1'],
-    'folder' => ['id' => 40, 'name' => 'Bab 3 - Trigonometri'],   // null = root Space
-    'allowed' => ['folder', 'upload', 'material', 'assignment', 'quiz', 'link', 'discussion', 'from_library'],
+    'folder' => null,                                          // kelas tidak punya folder
+    'topic'  => ['id' => 40, 'name' => 'Bab 1 - Aljabar'],     // null = "Semua topik"
+    'allowed' => ['assignment', 'quiz', 'question', 'material', 'reuse', 'from_library', 'topic'],
     'can_also_save_to_library' => true,
+],
+
+// Di halaman Pustaka Saya › Matematika › Bab 1
+'context' => [
+    'space'  => ['id' => 3, 'kind' => 'personal_library', 'name' => 'Pustaka Saya'],
+    'folder' => ['id' => 88, 'name' => 'Bab 1'],
+    'topic'  => null,
+    'allowed' => ['folder', 'upload', 'upload_folder', 'material', 'assignment', 'quiz', 'link'],
 ],
 ```
 
 ```php
 // routes/web.php (sketsa)
-Route::get('/', HomeController::class)->name('home');                        // context: Pustaka Saya (root)
-Route::get('/pustaka/{folder?}', PersonalLibraryController::class);          // context: Pustaka Saya + folder
+Route::get('/', HomeController::class)->name('home');                         // context: Pustaka Saya (root)
+Route::get('/pustaka/{folder?}', PersonalLibraryController::class);           // context: Pustaka Saya + folder
 Route::get('/pustaka-sekolah/{folder?}', SchoolLibraryController::class);
-Route::get('/kelas/{course}/materi/{folder?}', CourseMaterialController::class)->scopeBindings();
+Route::get('/kelas/{course}', CourseStreamController::class);                 // tab Forum
+Route::get('/kelas/{course}/tugas-kelas', CourseClassworkController::class);  // ?topik=40 untuk filter topik
 
 // Satu endpoint untuk semua aksi "+ Baru"
 Route::post('/spaces/{space}/items', StoreItemController::class)->name('items.store');
-Route::post('/spaces/{space}/folders', StoreFolderController::class)->name('folders.store');
-Route::post('/spaces/{space}/import', ImportFromLibraryController::class);  // "Dari Pustaka..."
+Route::post('/spaces/{space}/folders', StoreFolderController::class);          // ditolak untuk kelas
+Route::post('/spaces/{space}/topics', StoreTopicController::class);            // ditolak untuk pustaka
+Route::post('/spaces/{space}/import', ImportFromLibraryController::class);     // "Dari Pustaka..."
 ```
 
 Alur di server untuk `POST /spaces/{space}/items`:
 
 1. **Policy** `SpacePolicy::create` mengecek pengguna boleh menambah konten di Space ini. Siswa ditolak, guru hanya di kelasnya.
    ID Space dari browser **tidak pernah dipercaya** tanpa cek ini.
-2. **FormRequest** memastikan `folder_id` (jika ada) benar-benar milik `space` tersebut.
+2. **FormRequest** memastikan `folder_id` hanya dipakai di Pustaka, `topic_id` hanya dipakai di Kelas, dan keduanya
+   benar-benar milik Space tersebut.
 3. Item dibuat. Jika `also_save_to_library = true` (dari dalam kelas), buat juga salinan di Pustaka Saya, lalu hubungkan
    keduanya lewat `source_item_id`.
-4. Redirect kembali ke halaman yang sama dan tampilkan toast "Tersimpan di *X IPA 1 › Bab 3*".
+4. Redirect kembali ke halaman yang sama dan tampilkan toast "Tersimpan di *X IPA 1 › Bab 1 - Aljabar*".
    Pengguna selalu diberi tahu **di mana** materinya tersimpan.
 
-Unggah dengan **drag & drop ke area mana pun** di halaman memakai endpoint yang sama, dengan `context` yang sama.
+**Drag & drop:**
+- Di Pustaka, file yang diseret menjadi file lepas di folder yang sedang dibuka.
+- Di Tugas Kelas, file yang diseret ke sebuah topik langsung menjadi **Materi** baru di topik itu (judul = nama file),
+  dalam status draf supaya guru bisa menambah keterangan sebelum menerbitkan.
 
 ### 3.4 Pustaka → Kelas: salin, bukan tautan
 
 Saat guru memilih **"Dari Pustaka…"** di kelas (ala Schoology *Import from Resources*), item **disalin** ke kelas
-dan `source_item_id` menunjuk ke aslinya. Alasannya:
+dan `source_item_id` menunjuk ke aslinya. Karena struktur Pustaka (folder) dan Kelas (topik) berbeda, penyalinan
+mengikuti aturan ini:
+
+| Yang dipilih di Pustaka | Hasil di Kelas |
+|---|---|
+| File atau tautan | Satu **Materi** dengan file/tautan itu sebagai lampiran |
+| Materi, Tugas, atau Kuis (templat) | Postingan dengan tipe yang sama, sebagai draf |
+| Satu folder | Satu **Topik** baru bernama sama, berisi semua item di folder itu. Item dari sub-folder ikut masuk ke topik yang sama, sehingga hasilnya tetap satu tingkat |
+| Beberapa item sekaligus | Masuk ke topik yang sedang dipilih (atau dipilih di dialog) |
+
+Alasan memilih salin:
 
 - Mengedit materi kelas A tidak diam-diam mengubah kelas B atau Pustaka.
 - Tugas di kelas punya data pengumpulan sendiri yang tidak boleh tercampur.
 - Tautan ke asal tetap tersimpan, jadi nanti (v2) bisa ada tombol **"Perbarui dari Pustaka"**.
 
+Selain dari Pustaka, guru juga bisa **Gunakan kembali postingan** dari kelas lain yang ia ajar, persis seperti Classroom.
+
 ### 3.5 Peran dan hak akses
 
 | Aksi | Admin | Guru | Siswa | Orang Tua (v2) |
 |---|---|---|---|---|
-| Kelola pengguna, impor CSV | ✅ | — | — | — |
+| Kelola pengguna, impor CSV, reset password | ✅ | Wali kelas: siswanya | — | — |
 | Pustaka Saya | — | ✅ miliknya | — | — |
 | Pustaka Sekolah: lihat & salin ke kelas | ✅ | ✅ | — | — |
 | Pustaka Sekolah: tambah/ubah | ✅ | Jika kurator | — | — |
 | Buat kelas | ✅ | ✅ | — | — |
-| + Baru di kelas | ✅ | Guru kelas itu | — | — |
-| Lihat materi kelas | ✅ | Guru kelas itu | Anggota kelas itu (yang sudah terbit) | — |
-| Kumpulkan tugas | — | — | ✅ | — |
-| Nilai tugas | — | Guru kelas itu | — | — |
+| + Baru di kelas, kelola topik | ✅ | Guru kelas itu | — | — |
+| Lihat Forum & Tugas Kelas | ✅ | Guru kelas itu | Anggota kelas itu (yang sudah terbit) | — |
+| Serahkan tugas | — | — | ✅ | — |
+| Nilai & kembalikan tugas | — | Guru kelas itu | — | — |
 | Lihat nilai & tugas anak | — | — | Milik sendiri | Anak yang ditautkan |
 
 Implementasinya memakai Policy Laravel (`SpacePolicy`, `ItemPolicy`, `SubmissionPolicy`). Untuk MVP tidak perlu paket
 permission tambahan.
 
-### 3.6 Rekomendasi pustaka teknis
+### 3.6 Rekomendasi pustaka teknis (semua bisa berjalan offline)
 
 | Kebutuhan | Rekomendasi | Alasan |
 |---|---|---|
-| Auth | Laravel Fortify (+ Socialite untuk Google di v1) | Resmi, headless, cocok untuk Inertia |
-| Komponen UI | shadcn-vue (Reka UI) + ikon `lucide-vue-next` | Sejalan dengan starter kit resmi. Konfigurasi lint sudah mengecualikan `resources/js/components/ui/*` |
-| Editor materi | Tiptap (Vue 3) | Editor teks kaya yang ringan dan bisa diperluas |
-| Unggah file besar | Upload bertahap (chunked) atau presigned URL langsung ke S3 | Video pembelajaran sering ratusan MB |
-| Preview | Gambar & video native, PDF lewat pdf.js, dokumen Office dikonversi ke PDF di queue (v1) | Guru dan siswa tidak perlu mengunduh untuk melihat |
-| Pencarian | Laravel Scout (driver database) → Meilisearch di v1 | Mulai sederhana, bisa ditingkatkan |
-| Notifikasi real-time | Laravel Notifications, lalu Laravel Reverb di v1 | Resmi, bisa di-host sendiri |
+| Auth | Laravel Fortify, login dengan username/NIS | Resmi, headless, cocok untuk Inertia. Tidak bergantung pada email |
+| Login terpusat (opsional) | LDAP/Active Directory sekolah, jika ada | Siswa dan guru memakai akun yang sama dengan komputer sekolah |
+| Komponen UI | shadcn-vue (Reka UI) + ikon `lucide-vue-next` | Dibundel lokal oleh Vite, tanpa CDN. Konfigurasi lint sudah mengecualikan `resources/js/components/ui/*` |
+| Font | File font lokal (misalnya `@fontsource/*`) | Build bisa dilakukan tanpa internet (F17) |
+| Editor materi | Tiptap (Vue 3) | Editor teks kaya yang ringan, dibundel lokal |
+| Unggah file besar | Upload bertahap (chunked) ke server sekolah | Video pembelajaran sering ratusan MB, dan jaringan Wi-Fi sekolah bisa putus-sambung |
+| Video | Diputar dari server sekolah dengan pemutar HTML5. Opsional: konversi ke MP4 H.264 dengan ffmpeg di queue | YouTube tidak bisa diakses dari intranet |
+| Preview | Gambar & video native, PDF lewat pdf.js (dibundel lokal), dokumen Office dikonversi ke PDF dengan LibreOffice di server (v1) | Guru dan siswa tidak perlu mengunduh untuk melihat |
+| Pencarian | Laravel Scout (driver database) → Meilisearch di server yang sama jika perlu | Mulai sederhana, bisa ditingkatkan |
+| Notifikasi | Notifikasi di aplikasi (Laravel Notifications), lalu real-time dengan Laravel Reverb di v1 | Tidak bergantung pada email atau layanan push dari internet |
+| Email | Opsional, hanya jika sekolah punya server SMTP di intranet | Bukan jalur utama |
+
+### 3.7 Deployment intranet
+
+Gambaran instalasi minimal di satu server sekolah:
+
+| Komponen | Usulan |
+|---|---|
+| Sistem operasi | Ubuntu Server LTS |
+| Web server | Nginx + PHP-FPM 8.4 |
+| Database | MariaDB/MySQL atau PostgreSQL (pilih yang paling dikuasai tim IT sekolah) |
+| Queue worker | `php artisan queue:work` dijalankan oleh Supervisor/systemd |
+| Penjadwal | Cron untuk `php artisan schedule:run` (pembersihan Sampah, jadwal terbit, pengingat tenggat) |
+| Alamat | Nama domain lokal, misalnya `falcon.sekolah.lan`, lewat DNS internal |
+| HTTPS | Sertifikat dari CA internal sekolah, dipasang di perangkat sekolah. Diperlukan untuk cookie aman |
+| Jam | Sinkron NTP ke server waktu lokal |
+| Backup | Harian: dump database + folder `storage/app` ke NAS atau disk terpisah. Uji pemulihan tiap semester |
+
+**Cara memperbarui aplikasi tanpa internet:** `composer install` dan `npm ci` butuh internet. Karena itu, setiap
+rilis dibuat sebagai **paket siap pasang** di mesin yang punya internet (atau di CI): berisi kode, folder `vendor/`,
+dan `public/build/`. Paket itu disalin ke server sekolah (flashdisk atau jaringan lokal), lalu dipasang dengan satu
+skrip: masuk mode maintenance, ganti kode, `php artisan migrate --force`, bersihkan cache, keluar dari mode maintenance.
 
 ---
 
 ## 4. Rancangan UX
 
-### 4.1 Tata letak
+### 4.1 Tata letak halaman kelas (tab Tugas Kelas)
 
 ```
 +-----------------------------------------------------------------------------+
 | [F] Falcon LMS      [ Cari materi, kelas, tugas...               ]  (!) (A) |
 +------------------+----------------------------------------------------------+
-|  +-------------+ | Kelas X IPA 1 > Materi > Bab 3 - Trigonometri            |
-|  |  +  Baru    | | [Stream] [Materi] [Anggota] [Nilai]     [Grid | List]    |
-|  +-------------+ |                                                          |
-|                  | Folder                                                   |
-|  Beranda         | +------------+ +------------+ +------------+             |
-|  Pustaka Saya    | | Video      | | LKS        | | Latihan    |             |
-|  Pustaka Sekolah | +------------+ +------------+ +------------+             |
-|                  |                                                          |
-|  KELAS           | Item                                                     |
-|  > X IPA 1       | +------------+ +------------+ +------------+             |
-|  > XI IPS 2      | | PDF        | | TUGAS      | | TAUTAN     |             |
-|                  | | Rumus.pdf  | | Latihan 3  | | GeoGebra   |             |
-|  To-do           | |            | | s.d. 25 Okt| |            |             |
-|  Kalender        | +------------+ +------------+ +------------+             |
-|  Sampah          |                                                          |
-|                  |       (seret file ke sini untuk mengunggah)              |
+|  +-------------+ | X IPA 1 - Matematika                                     |
+|  |  +  Baru    | |   Forum   [Tugas Kelas]   Anggota   Nilai                |
+|  +-------------+ |----------------------------------------------------------|
+|                  | Semua topik    |  [M] Tata tertib kelas            1 Okt |
+|  Beranda         | Bab 1 - Aljabar|                                         |
+|  Pustaka Saya    | Bab 2 - Fungsi | BAB 1 - ALJABAR                         |
+|  Pustaka Sekolah | Bab 3 - Trigono|  [M] Rumus dasar                  2 Okt |
+|                  |                |  [T] Latihan 1            Tenggat 9 Okt |
+|  KELAS           |                |  [K] Kuis harian 1       Tenggat 12 Okt |
+|  > X IPA 1       |                |                                         |
+|  > XI IPS 2      |                | BAB 2 - FUNGSI                          |
+|                  |                |  [M] Video grafik fungsi         14 Okt |
+|  To-do           |                |  [P] Apa itu domain?     Tenggat 16 Okt |
+|  Kalender        |                |                                         |
+|  Sampah          |                |  (seret file ke sebuah topik untuk      |
+|                  |                |   langsung jadi Materi di topik itu)    |
 +------------------+----------------------------------------------------------+
 ```
 
+*[M] Materi · [T] Tugas · [K] Tugas kuis · [P] Pertanyaan*
+
 - **Sidebar kiri** seperti Drive: + Baru paling atas, lalu Beranda, Pustaka, daftar kelas, To-do, Kalender, Sampah.
-- **Breadcrumb** selalu menunjukkan posisi. Ini sekaligus menjadi "label" ke mana + Baru akan menyimpan.
-- **Tab kelas** mengikuti Classroom yang sudah dikenal guru: Stream, Materi (tampilan Drive), Anggota, Nilai.
-- **Grid atau list** bisa diganti, dan pilihannya diingat per pengguna.
+- **Tab kelas persis Classroom:** Forum, Tugas Kelas, Anggota, Nilai.
+- **Tugas Kelas** menampilkan semua postingan dalam satu halaman, dikelompokkan per topik. Postingan tanpa topik
+  tampil paling atas. Daftar topik di kiri berfungsi sebagai filter dan lompatan cepat. Klik postingan untuk
+  membuka detailnya di tempat (bisa diperluas), tanpa pindah ke "folder".
+- **Pustaka** memakai tampilan Drive: folder dan file dalam grid atau list, dengan breadcrumb.
+  Pilihan grid atau list diingat per pengguna.
 
 ### 4.2 Isi + Baru sesuai posisi halaman
 
 | Posisi halaman | Tujuan simpan | Isi menu |
 |---|---|---|
-| **Beranda** | Pustaka Saya (root) | Folder · Unggah file · Unggah folder · Materi · Tugas* · Kuis* · Tautan |
+| **Beranda** | Pustaka Saya (root) | Folder · Unggah file · Unggah folder · Materi* · Tugas* · Kuis* · Tautan |
 | **Pustaka Saya › folder** | Folder itu | Sama seperti di atas |
 | **Pustaka Sekolah › folder** | Folder itu (jika kurator) | Sama. Jika bukan kurator, tombol nonaktif dengan keterangan |
-| **Kelas › Stream** | Stream kelas | Pengumuman · Materi · Tugas · Kuis · Pertanyaan · Dari Pustaka… |
-| **Kelas › Materi › folder** | Folder kelas itu | Folder · Unggah · Materi · Tugas · Kuis · Tautan · Diskusi · Dari Pustaka… + ☐ *Simpan juga ke Pustaka Saya* |
+| **Kelas › Forum** | Forum kelas | Pengumuman, lalu pintasan ke Tugas · Tugas kuis · Pertanyaan · Materi |
+| **Kelas › Tugas Kelas (Semua topik)** | Kelas, tanpa topik (bisa dipilih di formulir) | Tugas · Tugas kuis · Pertanyaan · Materi · Gunakan kembali postingan · Dari Pustaka… · Topik |
+| **Kelas › Tugas Kelas › topik X** | Kelas, **topik X terisi otomatis** | Sama seperti di atas, + ☐ *Simpan juga ke Pustaka Saya* |
 | **Kelas › Anggota** | — | + Baru berubah menjadi **Undang siswa / Undang guru / Tampilkan kode kelas** |
 | **Kelas › Nilai** (v1) | — | Kolom nilai manual · Kategori nilai |
-| **Kalender** (v1) | Kelas yang dipilih di dialog | Tugas · Acara |
+| **Kalender** (v1) | Kelas yang dipilih di dialog | Tugas |
 | **To-do, Sampah** | Pustaka Saya (root) | Sama seperti Beranda |
 
-\* *Tugas dan Kuis di Pustaka berfungsi sebagai **templat**. Siswa baru bisa mengerjakan setelah templat disalin ke kelas.*
+\* *Materi, Tugas, dan Kuis di Pustaka berfungsi sebagai **templat**. Siswa baru bisa mengerjakan setelah templat disalin ke kelas.*
+
+Di dalam kelas **tidak ada pilihan "Folder"**. Satu-satunya pengelompokan adalah Topik.
 
 **Siswa:** + Baru disembunyikan di MVP. Di halaman tugas, siswa mendapat tombol **"+ Tambah atau buat"** untuk
-melampirkan jawaban (ala Classroom).
+melampirkan jawaban, lalu **"Serahkan"** (persis Classroom).
 
 ### 4.3 Prinsip kesederhanaan (pagar terhadap fitur yang menumpuk)
 
 Menggabungkan tiga LMS berisiko membuat aplikasi rumit. Setiap fitur baru harus lolos aturan ini:
 
-1. **Jalur utama maksimal 3 klik.** Membuat tugas: + Baru → Tugas → isi → Tetapkan.
-2. **Pengaturan lanjutan disembunyikan** di bagian "Opsi lainnya" (rubrik, jadwal terbit, prasyarat modul).
-3. **Satu pola tampilan.** Pustaka, Kelas, dan Modul memakai komponen Drive yang sama.
-4. **Selalu beri tahu lokasi simpan** lewat toast dan breadcrumb.
-5. **Fitur kuat lewat pintasan, bukan menu tambahan:** klik kanan, multi-pilih, seret untuk memindah, pintasan keyboard.
+1. **Kelas maksimal satu tingkat.** Tidak ada folder di kelas, hanya Topik. Siswa melihat semua isi kelas tanpa
+   masuk-keluar folder.
+2. **Istilah dan alur mengikuti Classroom** di dalam kelas, supaya guru dan siswa yang sudah pernah memakai Classroom
+   langsung paham.
+3. **Jalur utama maksimal 3 klik.** Membuat tugas: + Baru → Tugas → isi → Tugaskan.
+4. **Pengaturan lanjutan disembunyikan** di bagian "Opsi lainnya" (rubrik, jadwal terbit, syarat topik berurutan).
+5. **Selalu beri tahu lokasi simpan** lewat toast dan breadcrumb.
+6. **Fitur kuat lewat pintasan, bukan menu tambahan:** klik kanan, multi-pilih, seret untuk memindah, pintasan keyboard.
 
 ---
 
@@ -486,43 +614,46 @@ Semua fitur di bawah **belum ada** saat ini. Kolom *Fase* menunjukkan usulan pri
 
 | Fitur | Inspirasi | Fase |
 |---|---|---|
-| Login, reset password, peran | Semua | 0 |
-| Layout Drive: sidebar, + Baru, breadcrumb, grid/list | Google Drive | 0–1 |
+| Login dengan username/NIS, reset password oleh admin, impor akun CSV | Kebutuhan intranet | 0 |
+| Layout Drive: sidebar, + Baru, breadcrumb, grid/list di Pustaka | Google Drive | 0–1 |
 | + Baru sesuai posisi halaman | Brief Falcon | 1 |
 | Pustaka Saya: folder, unggah, materi, tautan | Schoology Resources | 1 |
 | Preview file di browser | Google Drive | 1 |
 | Buat kelas, gabung dengan kode kelas | Google Classroom | 1 |
-| Tab Stream, Materi, Anggota | Google Classroom | 1 |
-| Salin dari Pustaka ke kelas; "Simpan juga ke Pustaka" | Schoology | 1 |
-| Tugas: tenggat, poin, kumpul, nilai, komentar | Classroom / Canvas | 1 |
-| To-do siswa (tugas mendatang & terlambat) | Canvas / Classroom | 1 |
+| Tab Forum, Tugas Kelas, Anggota | Google Classroom | 1 |
+| **Topik di Tugas Kelas, urutan dengan seret** | Google Classroom | 1 |
+| Salin dari Pustaka ke kelas (folder → topik); "Simpan juga ke Pustaka" | Schoology | 1 |
+| Tugas: tenggat, poin, serahkan, nilai, kembalikan, komentar | Google Classroom | 1 |
+| To-do siswa (tugas mendatang & terlambat) | Classroom / Canvas | 1 |
 | Notifikasi di aplikasi | Semua | 1 |
-| Admin: kelola pengguna & impor CSV | Schoology / Canvas | 1 |
-| Kuis dengan penilaian otomatis | Schoology / Canvas | 2 |
+| Backup otomatis harian | Kebutuhan intranet | 1 |
+| Gunakan kembali postingan dari kelas lain | Google Classroom | 2 |
+| Tugas kuis dengan penilaian otomatis | Classroom / Schoology / Canvas | 2 |
 | Rubrik | Canvas | 2 |
 | Tampilan penilaian cepat (ala SpeedGrader) | Canvas | 2 |
-| Buku nilai dengan kategori berbobot | Schoology / Canvas | 2 |
-| Modul dengan prasyarat & syarat selesai | Canvas | 2 |
-| Jadwal terbit materi | Google Classroom | 2 |
+| Tab Nilai: buku nilai dengan kategori berbobot | Schoology / Canvas | 2 |
+| Jadwal terbit & draf | Google Classroom | 2 |
 | Kalender | Canvas / Schoology | 2 |
-| Diskusi berutas | Canvas / Schoology | 2 |
+| Pertanyaan (jawaban singkat & pilihan ganda) | Google Classroom | 2 |
 | Pustaka Sekolah & peran kurator | Schoology Group Resources | 2 |
 | Sampah & pulihkan | Google Drive | 2 |
 | Seret untuk memindah, multi-pilih, klik kanan, pintasan keyboard | Google Drive | 2 |
 | Komentar privat di tugas | Google Classroom | 2 |
 | Pencarian global | Google Drive | 2 |
-| Notifikasi email & ringkasan harian | Semua | 2 |
-| Masuk dengan Google (SSO) | Google Classroom | 2 |
-| Akses Orang Tua | Schoology | 3 |
+| Preview dokumen Office (konversi di server) | Google Drive | 2 |
+| Login lewat LDAP/Active Directory sekolah | Kebutuhan intranet | 2 (jika ada) |
+| Akses Orang Tua (di jaringan sekolah) | Schoology | 3 |
 | Bank soal | Schoology | 3 |
 | Capaian pembelajaran / mastery | Schoology / Canvas | 3 |
 | Analitik keterlibatan siswa | Schoology | 3 |
+| Topik berurutan (topik berikutnya terbuka setelah selesai) | Canvas Modules | 3 |
 | Peer review | Canvas | 3 |
-| Integrasi LTI 1.3 & pemilih Google Drive | Canvas | 3 |
 | Riwayat versi & "Perbarui dari Pustaka" | Google Drive | 3 |
-| Ekspor nilai (Excel) & rapor | Lokal Indonesia | 3 |
-| PWA / mode hemat data | — | 3 |
-| Multi-sekolah | — | 3 |
+| Ekspor nilai (Excel) & rapor | Kebutuhan lokal | 3 |
+| Email notifikasi (jika ada SMTP intranet) | Semua | 3 |
+
+**Dikeluarkan dari rencana** karena butuh internet atau tidak relevan untuk satu sekolah: masuk dengan Google,
+pemilih Google Drive, embed YouTube, integrasi LTI ke layanan luar, multi-sekolah.
 
 ---
 
@@ -534,36 +665,47 @@ Setiap fase ditutup dengan CI hijau dan Feature test untuk semua aturan baru.
 
 - Perbaiki F1 (versi PHP), F2 (CI), F5 (tipe), F6 (shared props), F7 (identitas, bahasa, zona waktu), F8 (npm saja),
   F9 (Dependabot), F10 (hapus contoh test), F11 (README).
-- Pasang Fortify: login, logout, lupa password. Kolom `users.role`. Seeder akun demo admin, guru, dan siswa.
+- Kesiapan intranet: F16 (hapus cek password ke internet), F17 (font lokal), dan aturan "tanpa CDN".
+- Pasang Fortify: login dengan username/NIS, logout, reset password oleh admin, wajib ganti password saat login pertama.
+  Kolom `users.role`. Seeder akun demo admin, guru, dan siswa.
 - Pasang shadcn-vue dan lucide. Buat `AppLayout`: sidebar, topbar, kerangka tombol + Baru, breadcrumb.
-- Siapkan disk privat dan controller unduhan dengan signed URL.
+- Siapkan disk privat dan controller unduhan dengan cek Policy.
+- Draf panduan instalasi server sekolah dan skrip paket rilis offline.
 
-**Selesai jika:** pengguna bisa login sesuai peran dan melihat layout Drive kosong, dan CI hijau di PHP 8.4.
+**Selesai jika:** pengguna bisa login dengan username sesuai peran dan melihat layout kosong, aplikasi berjalan
+tanpa satu pun permintaan ke internet, dan CI hijau di PHP 8.4.
 
-### Fase 1: MVP "Drive + Kelas"
+### Fase 1: MVP "Pustaka + Kelas ala Classroom"
 
-- Migrasi, model, dan Policy untuk `spaces`, `space_members`, `courses`, `folders`, `items`, `attachments`,
+- Migrasi, model, dan Policy untuk `spaces`, `space_members`, `courses`, `folders`, `topics`, `items`, `attachments`,
   `assignments`, `submissions`, `posts`.
 - Pustaka Saya: tampilan Drive, CRUD folder, unggah, materi (Tiptap), tautan, preview.
 - **+ Baru sesuai posisi halaman** lewat satu endpoint, termasuk unggah dengan drag & drop.
-- Kelas: buat, kode kelas, anggota, tab Stream/Materi/Anggota.
-- "Dari Pustaka…" dan "Simpan juga ke Pustaka Saya".
-- Tugas: buat, kumpulkan, nilai, komentar. To-do siswa. Notifikasi di aplikasi.
-- Admin: kelola pengguna dan impor CSV.
+- Kelas: buat, kode kelas, anggota, tab Forum, **Tugas Kelas dengan Topik**, dan Anggota.
+- "Dari Pustaka…" (termasuk folder → topik) dan "Simpan juga ke Pustaka Saya".
+- Tugas: buat, serahkan, nilai, kembalikan, komentar. To-do siswa. Notifikasi di aplikasi.
+- Admin: kelola pengguna, impor CSV, reset password.
+- Backup harian otomatis.
 
-**Selesai jika:** seorang guru bisa (1) mengunggah materi di Beranda dan menemukannya di Pustaka Saya,
-(2) membuat kelas, (3) menyalin materi dari Pustaka ke kelas, dan (4) membuat tugas. Seorang siswa bisa
-bergabung dengan kode kelas, mengumpulkan tugas, dan melihat nilainya. Semua aturan tujuan simpan
-**+ Baru tercakup Feature test.**
+**Selesai jika:**
+1. Seorang guru bisa mengunggah materi di Beranda dan menemukannya di Pustaka Saya.
+2. Guru bisa membuat kelas beserta topik-topiknya.
+3. Guru bisa menyalin satu folder Pustaka ke kelas, dan folder itu menjadi satu topik.
+4. Guru bisa membuat tugas di sebuah topik.
+5. Seorang siswa bisa bergabung dengan kode kelas, melihat semua isi kelas di satu halaman,
+   menyerahkan tugas, dan melihat nilainya.
+6. Semua aturan tujuan simpan + Baru tercakup Feature test.
 
-### Fase 2: v1 "Classroom + Canvas"
+### Fase 2: v1 "Classroom lengkap + Canvas"
 
-Kuis, rubrik, tampilan penilaian cepat, buku nilai, modul, jadwal terbit, kalender, diskusi, Pustaka Sekolah,
-Sampah, interaksi lanjutan ala Drive, pencarian global, email, dan SSO Google.
+Gunakan kembali postingan, tugas kuis, pertanyaan, rubrik, tampilan penilaian cepat, tab Nilai, jadwal terbit,
+kalender, Pustaka Sekolah, Sampah, interaksi lanjutan ala Drive, pencarian global, preview dokumen Office,
+dan login LDAP (jika sekolah punya).
 
 ### Fase 3: v2 "Schoology lanjutan"
 
-Akses orang tua, bank soal, mastery, analitik, peer review, LTI, riwayat versi, ekspor rapor, PWA, multi-sekolah.
+Akses orang tua, bank soal, mastery, analitik, topik berurutan, peer review, riwayat versi, ekspor rapor,
+dan email (jika ada SMTP intranet).
 
 ---
 
@@ -573,27 +715,29 @@ Akses orang tua, bank soal, mastery, analitik, peer review, LTI, riwayat versi, 
 
 | Risiko | Mitigasi |
 |---|---|
-| Biaya penyimpanan & bandwidth video | Penyimpanan S3-compatible, batas ukuran per file, kuota per guru, sarankan tautan YouTube untuk video panjang |
+| Server tunggal adalah titik gagal tunggal | Backup harian ke NAS/disk terpisah, uji pemulihan rutin, catat prosedur pemulihan di panduan |
+| Kapasitas disk server sekolah habis oleh video | Batas ukuran per file, kuota per guru, laporan pemakaian disk di halaman admin, opsi kompresi video |
+| Beban puncak saat ujian/kuis serentak | Uji beban sebelum dipakai ujian. Session dan cache bisa dipindah ke Redis jika perlu |
+| Pembaruan aplikasi tanpa internet | Paket rilis siap pasang + skrip pemasangan (§3.7) |
 | Fitur menumpuk sampai tidak sederhana lagi | Terapkan prinsip §4.3 di setiap review desain |
-| Data pribadi siswa (UU No. 27/2022 tentang Pelindungan Data Pribadi) | Minimalkan data yang dikumpulkan, Policy akses ketat, log akses, kebijakan retensi data, persetujuan orang tua untuk siswa di bawah umur |
+| Data pribadi siswa (UU No. 27/2022 tentang Pelindungan Data Pribadi) | Data tetap di server sekolah. Tetap terapkan Policy akses ketat, log akses, kebijakan retensi data, dan persetujuan orang tua untuk siswa di bawah umur |
 | Toolchain pra-1.0 (`vite-plus`) | Kunci versi persis dan aktifkan Dependabot npm |
-| Struktur folder dalam yang lambat | Kolom `path` dan index; uji dengan data ribuan item |
 
 ### Keputusan yang masih perlu dijawab
 
-1. **Satu sekolah atau banyak sekolah?** Rancangan ini mengasumsikan satu sekolah dulu.
-2. **Apakah siswa punya "Drive Saya" sendiri** (misalnya untuk portofolio)? Asumsi: belum di MVP.
-3. **Target hosting** (VPS, shared hosting, cloud)? Ini menentukan apakah queue worker, Reverb, dan
-   konversi dokumen (LibreOffice) bisa dipakai.
-4. **Apakah sekolah sasaran memakai Google Workspace for Education?** Jika ya, SSO Google dan pemilih
-   Google Drive layak dinaikkan prioritasnya.
+1. **Apakah siswa punya "Drive Saya" sendiri** (misalnya untuk portofolio)? Asumsi: belum di MVP.
+2. **Apakah sekolah sudah punya direktori akun** (LDAP/Active Directory)? Jika ya, login terpusat bisa dinaikkan ke Fase 1.
+3. **Database apa yang paling dikuasai tim IT sekolah?** MariaDB/MySQL atau PostgreSQL. Keduanya didukung.
+4. **Apakah ada server SMTP di intranet?** Jika tidak, semua notifikasi lewat aplikasi saja.
+5. **Spesifikasi server dan jumlah pengguna serentak** (misalnya saat ujian)? Ini menentukan kebutuhan Redis,
+   ukuran disk, dan apakah konversi video layak dijalankan.
 
 ---
 
 ## Lampiran: cara mengulang pengecekan
 
 ```bash
-# Butuh PHP >= 8.4 dan Node 22
+# Butuh PHP >= 8.4 dan Node 22, di mesin yang punya internet
 composer install
 cp .env.example .env && php artisan key:generate
 php artisan migrate
@@ -602,5 +746,5 @@ npm ci
 npm run check          # format + lint frontend
 npm run types:check    # vue-tsc
 composer test          # Pint + PHPStan + Pest
-npm run build          # butuh vendor/ (Wayfinder)
+npm run build          # butuh vendor/ (Wayfinder) dan, untuk saat ini, internet (F17)
 ```
