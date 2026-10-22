@@ -2,19 +2,42 @@
 #
 # Build an offline release bundle of Falcon LMS.
 #
-# Run this on a computer WITH internet access (PHP 8.4, Composer, Node 22).
+# Run this on a computer WITH internet access (PHP 8.4, Composer, Node 22),
+# from a working copy that has its dependencies installed. Falcon does not
+# use GitHub Actions, so this script is the quality gate: it runs all checks
+# and the dependency security audits before it packages anything.
+#
 # The bundle contains vendor/ and the built frontend, so the school server
 # never has to download anything.
 #
-# Usage: scripts/build-release.sh [git-ref]      (default: HEAD)
+# Usage: scripts/build-release.sh [--skip-checks] [git-ref]   (default: HEAD)
 # Output: releases/falcon-<version>.tar.gz and a .sha256 checksum file
 
 set -euo pipefail
+
+skip_checks=false
+if [ "${1:-}" = "--skip-checks" ]; then
+    skip_checks=true
+    shift
+fi
 
 ref="${1:-HEAD}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 version="$(git -C "$root" describe --tags --always "$ref")"
 name="falcon-${version}"
+
+if [ "$skip_checks" = false ]; then
+    echo "Running checks (lint, types, tests) and security audits..."
+    (
+        cd "$root"
+        composer ci:check
+        composer audit --locked
+        npm audit --omit=dev --audit-level=high
+    )
+else
+    echo "WARNING: skipping checks and security audits." >&2
+fi
+
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 

@@ -18,7 +18,7 @@ materi masuk ke kelas itu.
 - Layout ala Drive: sidebar, tombol **+ Baru** (juga sebagai tombol mengambang di HP), breadcrumb, dan Beranda.
   Isi menu + Baru dikirim server sesuai halaman dan peran. Menyimpan konten hadir di Fase 1.
 - Berjalan tanpa internet: font dibundel lokal dan tidak ada aset dari CDN.
-- PostgreSQL sebagai database, dan test di CI juga memakai PostgreSQL.
+- PostgreSQL sebagai database.
 
 **Berikutnya, Fase 1:** Pustaka Saya, kelas dengan Topik, tugas, kelola pengguna, dan backup harian.
 
@@ -62,14 +62,24 @@ php artisan falcon:reset-password 0012345678
 
 ## Pengecekan
 
+Falcon **tidak memakai GitHub Actions** (supaya tidak ada biaya). Semua pengecekan dijalankan di komputer developer:
+
 ```bash
+composer ci:check      # semuanya sekaligus: format, lint, tipe, Pint, PHPStan, dan Pest
 npm run check          # format dan lint frontend (termasuk file Markdown)
 npm run types:check    # vue-tsc
 composer test          # Pint, PHPStan, dan Pest
 ```
 
-Secara bawaan Pest memakai SQLite in-memory supaya cepat. CI menjalankan test yang sama terhadap PostgreSQL. Untuk
-melakukannya di komputer sendiri, set `DB_CONNECTION=pgsql` dan `DB_DATABASE` ke database test sebelum `php artisan test`.
+Secara bawaan Pest memakai SQLite in-memory supaya cepat. Sebelum membuat rilis, jalankan juga test terhadap
+PostgreSQL, sama seperti server sekolah:
+
+```bash
+DB_CONNECTION=pgsql DB_DATABASE=falcon_test php artisan test
+```
+
+`scripts/build-release.sh` otomatis menjalankan `composer ci:check`, `composer audit`, dan `npm audit` sebelum
+membuat paket, dan berhenti jika ada yang gagal.
 
 ## Paket rilis offline
 
