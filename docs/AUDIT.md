@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Tanggal** | 22 Oktober 2026 (revisi 2) |
+| **Tanggal** | 22 Oktober 2026 (revisi 3) |
 | **Commit yang diaudit** | `84bcdd4` ("first commit") |
 | **Branch audit** | `claude/audit-falcon-lms-wu1e2m` |
 | **Lingkup** | Kondisi kode saat ini, analisis kekurangan dibanding goal produk, rancangan arsitektur & UX, roadmap |
@@ -33,6 +33,11 @@ kesederhanaan Classroom.
 | 6 | Jaringan | **Murni intranet**: server di sekolah, tanpa ketergantungan ke internet saat aplikasi berjalan |
 | 7 | Isi kelas | **Persis Google Classroom**: tab Forum, Tugas Kelas, Anggota, Nilai. Materi dikelompokkan dengan **Topik** (satu tingkat), bukan folder |
 | 8 | Jumlah sekolah | Satu sekolah per instalasi (konsekuensi dari keputusan 6) |
+| 9 | Drive siswa | Siswa **tidak** punya "Drive Saya". Siswa hanya melampirkan file saat menyerahkan tugas |
+| 10 | Akun | Dikelola langsung di Falcon (impor CSV/Excel, login username/NIS). **Tanpa LDAP/Active Directory** ([§3.6](#36-rekomendasi-pustaka-teknis-semua-bisa-berjalan-offline)) |
+| 11 | Database | Tim menguasai MySQL dan PostgreSQL. Rekomendasi: **PostgreSQL** sebagai satu-satunya database resmi ([§3.7](#37-deployment-intranet)) |
+| 12 | Email | **Tidak ada server email.** Semua notifikasi lewat aplikasi, reset password oleh admin/wali kelas |
+| 13 | Beban puncak | **450 siswa ujian serentak** saat PTS dan PAS (jarang, tapi harus kuat) ([§3.8](#38-ujian-serentak-450-siswa-pts--pas)) |
 
 ---
 
@@ -53,6 +58,8 @@ kesederhanaan Classroom.
    Pustaka Sekolah, dan setiap Kelas adalah Space. Bedanya hanya cara mengelompokkan isi: **Pustaka memakai folder**
    (ala Drive), **Kelas memakai topik** (ala Classroom). Setiap halaman tahu Space dan folder atau topik yang sedang
    dibuka, jadi + Baru cukup mengirim keduanya ke **satu endpoint**. Detail di [§3](#3-rancangan-arsitektur).
+6. **450 siswa ujian serentak bisa dilayani satu server sekolah**, asalkan halaman ujian dirancang ringan,
+   memakai Redis, dan lolos uji beban serta gladi bersih sebelum dipakai. Detail di [§3.8](#38-ujian-serentak-450-siswa-pts--pas).
 
 ### Skor kesiapan per area
 
@@ -146,14 +153,13 @@ lint, tipe, Pint, PHPStan, dan Pest.
 
 #### F3. Belum ada autentikasi dan peran
 **Tinggi.** Starter kit *blank* tidak menyertakan login, reset password, atau manajemen akun. LMS butuh semua itu,
-ditambah peran (Admin, Guru, Siswa, lalu Orang Tua). Di intranet ada dua hal tambahan:
+ditambah peran (Admin, Guru, Siswa, lalu Orang Tua). Sekolah **tidak punya server email**, jadi alur bawaan
+"lupa password → tautan lewat email" tidak bisa dipakai.
 
-- Banyak siswa tidak punya email, dan server intranet belum tentu bisa mengirim email.
-- Reset password lewat tautan email tidak bisa diandalkan.
-
-**Perbaikan:** pasang **Laravel Fortify** (headless) dengan halaman Inertia/Vue, tapi:
-- login memakai **username atau NIS/NIP**, email opsional;
+**Perbaikan:** pasang **Laravel Fortify** (headless) dengan halaman Inertia/Vue, dengan fitur email dimatikan:
+- login memakai **username atau NIS/NIP**; kolom email boleh kosong;
 - **reset password oleh admin atau wali kelas**, dengan wajib ganti password saat login pertama;
+- halaman login menampilkan petunjuk "Lupa password? Hubungi wali kelas atau admin";
 - impor akun massal dari CSV/Excel (data Dapodik biasanya sudah tersedia dalam format ini).
 
 Peran disimpan sebagai enum di `users.role`, dan otorisasi memakai **Policy** Laravel.
@@ -211,6 +217,12 @@ versi paket yang berbeda dari lockfile.
 `something()`.
 **Perbaikan:** hapus contoh-contoh itu. Wajibkan Feature test untuk setiap aturan bisnis penting, terutama
 **aturan tujuan simpan + Baru** dan **Policy akses** (siswa tidak boleh melihat kelas lain, dan seterusnya).
+
+#### F18. Test memakai SQLite, production akan memakai PostgreSQL
+**Sedang.** `phpunit.xml` menjalankan test di SQLite in-memory. Perilaku SQLite berbeda dari PostgreSQL dalam hal
+tipe data, perbandingan teks, constraint, dan query `LIKE`. Bug bisa lolos test lalu muncul di server sekolah.
+**Perbaikan:** di CI, jalankan Pest terhadap PostgreSQL (service container). SQLite boleh tetap dipakai untuk test
+cepat di laptop developer.
 
 #### F11. Belum ada README dan panduan instalasi
 **Rendah.** Belum ada dokumentasi cara setup. Ada beberapa jebakan yang perlu ditulis: PHP 8.4, `composer install`
@@ -499,8 +511,9 @@ permission tambahan.
 
 | Kebutuhan | Rekomendasi | Alasan |
 |---|---|---|
-| Auth | Laravel Fortify, login dengan username/NIS | Resmi, headless, cocok untuk Inertia. Tidak bergantung pada email |
-| Login terpusat (opsional) | LDAP/Active Directory sekolah, jika ada | Siswa dan guru memakai akun yang sama dengan komputer sekolah |
+| Auth | Laravel Fortify, login dengan username/NIS, fitur email dimatikan | Resmi, headless, cocok untuk Inertia. Tidak bergantung pada email |
+| Database | PostgreSQL (lihat §3.7) | Migrasi yang gagal dibatalkan otomatis, constraint data lebih lengkap |
+| Cache, session, queue | Redis di server yang sama | Mengurangi beban database saat ujian serentak (§3.8). Instalasi kecil tetap bisa memakai driver `database` |
 | Komponen UI | shadcn-vue (Reka UI) + ikon `lucide-vue-next` | Dibundel lokal oleh Vite, tanpa CDN. Konfigurasi lint sudah mengecualikan `resources/js/components/ui/*` |
 | Font | File font lokal (misalnya `@fontsource/*`) | Build bisa dilakukan tanpa internet (F17) |
 | Editor materi | Tiptap (Vue 3) | Editor teks kaya yang ringan, dibundel lokal |
@@ -508,8 +521,21 @@ permission tambahan.
 | Video | Diputar dari server sekolah dengan pemutar HTML5. Opsional: konversi ke MP4 H.264 dengan ffmpeg di queue | YouTube tidak bisa diakses dari intranet |
 | Preview | Gambar & video native, PDF lewat pdf.js (dibundel lokal), dokumen Office dikonversi ke PDF dengan LibreOffice di server (v1) | Guru dan siswa tidak perlu mengunduh untuk melihat |
 | Pencarian | Laravel Scout (driver database) → Meilisearch di server yang sama jika perlu | Mulai sederhana, bisa ditingkatkan |
-| Notifikasi | Notifikasi di aplikasi (Laravel Notifications), lalu real-time dengan Laravel Reverb di v1 | Tidak bergantung pada email atau layanan push dari internet |
-| Email | Opsional, hanya jika sekolah punya server SMTP di intranet | Bukan jalur utama |
+| Notifikasi | Notifikasi di aplikasi (Laravel Notifications, ikon lonceng), lalu real-time dengan Laravel Reverb di v1 | Satu-satunya jalur notifikasi, karena tidak ada server email |
+
+**Tentang LDAP/Active Directory.** LDAP adalah cara standar untuk membaca "buku akun" terpusat. Active Directory
+adalah produk Microsoft yang paling umum untuk itu. Gunanya: satu username dan password berlaku di semua sistem
+sekolah (komputer lab, Wi-Fi, LMS). Admin cukup membuat atau memblokir akun sekali.
+
+| | Falcon dengan akun sendiri (dipilih) | Falcon terhubung ke Active Directory |
+|---|---|---|
+| Kebutuhan | Tidak ada tambahan | Server AD (Windows Server atau Samba) dan orang yang mengelolanya |
+| Mengelola akun | Di Falcon: impor CSV/Excel, reset oleh admin/wali kelas | Di AD, lalu Falcon ikut membaca |
+| Password | Khusus Falcon | Sama dengan login komputer/Wi-Fi |
+| Jika server lain mati | Tidak berpengaruh | AD mati = tidak ada yang bisa login ke Falcon |
+
+Karena sekolah belum punya AD, **membangun AD hanya demi Falcon tidak sepadan**. Falcon mengelola akunnya sendiri.
+Kode login tetap dibuat rapi supaya LDAP bisa ditambahkan kelak jika sekolah memasang AD untuk keperluan lain.
 
 ### 3.7 Deployment intranet
 
@@ -519,7 +545,8 @@ Gambaran instalasi minimal di satu server sekolah:
 |---|---|
 | Sistem operasi | Ubuntu Server LTS |
 | Web server | Nginx + PHP-FPM 8.4 |
-| Database | MariaDB/MySQL atau PostgreSQL (pilih yang paling dikuasai tim IT sekolah) |
+| Database | PostgreSQL |
+| Cache, session, queue | Redis |
 | Queue worker | `php artisan queue:work` dijalankan oleh Supervisor/systemd |
 | Penjadwal | Cron untuk `php artisan schedule:run` (pembersihan Sampah, jadwal terbit, pengingat tenggat) |
 | Alamat | Nama domain lokal, misalnya `falcon.sekolah.lan`, lewat DNS internal |
@@ -531,6 +558,75 @@ Gambaran instalasi minimal di satu server sekolah:
 rilis dibuat sebagai **paket siap pasang** di mesin yang punya internet (atau di CI): berisi kode, folder `vendor/`,
 dan `public/build/`. Paket itu disalin ke server sekolah (flashdisk atau jaringan lokal), lalu dipasang dengan satu
 skrip: masuk mode maintenance, ganti kode, `php artisan migrate --force`, bersihkan cache, keluar dari mode maintenance.
+
+**Kenapa PostgreSQL, bukan MySQL?** Keduanya sanggup menangani beban Falcon. PostgreSQL dipilih karena:
+
+1. **Pembaruan offline lebih aman.** Jika migrasi gagal di tengah jalan, PostgreSQL membatalkan seluruh perubahan
+   struktur tabel secara otomatis. MySQL bisa meninggalkan database dalam keadaan setengah berubah, dan itu sulit
+   dipulihkan di server sekolah tanpa developer di tempat.
+2. **Aturan data bisa dijaga oleh database**, bukan hanya oleh kode. Contoh: "item di kelas wajib memakai topik,
+   bukan folder" (CHECK constraint), dan "nama topik unik per kelas, kecuali yang sudah di Sampah" (partial unique
+   index). MySQL tidak punya partial index.
+
+Falcon hanya mendukung **satu** database resmi supaya test dan dukungan teknis fokus. CI juga menjalankan test
+terhadap PostgreSQL (F18). Jika sekolah lebih nyaman dengan MySQL, keputusan ini masih bisa diubah sebelum Fase 1
+dimulai, tapi jangan keduanya.
+
+### 3.8 Ujian serentak 450 siswa (PTS & PAS)
+
+Ujian tengah semester (PTS) dan akhir semester (PAS) adalah satu-satunya saat beban tinggi. Jarang terjadi, tapi
+justru paling berisiko: kalau server lambat saat ujian, kepercayaan guru dan siswa langsung hilang.
+
+**Perkiraan beban**
+
+| Momen | Yang terjadi | Beban kira-kira |
+|---|---|---|
+| 10–15 menit sebelum mulai | 450 siswa login dan masuk ruang tunggu | Login tersebar, ringan. Jika semua login di menit yang sama, CPU sibuk sesaat karena hashing password |
+| Detik ujian dibuka | 450 siswa memuat soal bersamaan | Lonjakan tertinggi. Soal harus sudah di-cache dan dikirim dalam satu paket |
+| Selama ujian | Jawaban tersimpan otomatis saat berubah (paling sering tiap 15 detik per siswa) | Sekitar 30 request/detik, ringan untuk satu server |
+| Waktu habis | 450 jawaban dikirim dalam satu menit | Pengiriman cepat; penilaian otomatis dikerjakan di queue |
+
+**Spesifikasi server awal** (titik awal, harus dibuktikan dengan uji beban):
+
+| Komponen | Usulan |
+|---|---|
+| CPU | 8 core (minimal 4) |
+| RAM | 16 GB |
+| Disk | SSD/NVMe untuk sistem dan database. Disk terpisah untuk file materi, ukurannya sesuai kebutuhan video |
+| Jaringan | Server tersambung kabel 1 Gbps ke switch inti |
+| PHP | OPcache aktif, jumlah worker PHP-FPM disetel dari hasil uji beban |
+
+**Jaringan sekolah lebih sering menjadi titik lemah daripada server.** Satu access point Wi-Fi biasanya nyaman untuk
+sekitar 30–40 perangkat aktif, jadi 450 siswa butuh access point yang cukup dan tersebar di ruang ujian.
+
+**Desain aplikasi supaya kuat saat ujian**
+
+- Semua soal dikirim **sekali** di awal dalam satu paket yang sudah di-cache. Urutan acak dibuat per siswa tanpa query ulang.
+- Endpoint simpan jawaban dibuat sangat ringan: hanya menyimpan satu jawaban, tanpa memuat halaman penuh.
+- Jawaban juga disimpan di perangkat. Jika Wi-Fi putus, siswa tetap bisa mengerjakan, dan jawaban dikirim ulang
+  otomatis saat tersambung lagi.
+- Session dan cache disimpan di Redis. Dengan driver `database`, setiap request menulis ke tabel `sessions`,
+  sehingga 450 siswa aktif berarti ratusan tulisan per detik yang tidak perlu ke database.
+- Gambar soal dikompres, tanpa aset dari internet.
+- Penilaian otomatis dan rekap nilai dikerjakan di queue, bukan saat siswa menekan "Kirim".
+
+**Fitur mode ujian** (bagian dari Tugas kuis, Fase 2):
+
+- **Token ujian** yang diumumkan pengawas saat ujian dibuka, dan **ruang tunggu** sebelum jam mulai.
+- **Timer dihitung server**, jadi tidak bisa diakali dengan mengubah jam perangkat.
+- Soal dan pilihan jawaban **diacak per siswa**.
+- **Kirim otomatis** saat waktu habis.
+- **Satu sesi aktif per siswa.** Pengawas bisa **reset login** jika perangkat siswa mati, dan siswa melanjutkan dari
+  jawaban terakhir.
+- **Panel pengawas:** siapa yang belum mulai, sedang mengerjakan, dan sudah selesai.
+- Perpindahan tab **dicatat** sebagai informasi untuk pengawas, bukan diblokir.
+
+**Uji beban sebelum ujian pertama**
+
+1. Uji beban dengan k6 (bisa dijalankan offline) di jaringan sekolah: 450 siswa virtual login, membuka ujian di detik
+   yang sama, menyimpan jawaban selama ujian, lalu mengirim bersamaan.
+   Target: 95% request selesai di bawah 1 detik, tidak ada jawaban yang hilang, CPU server di bawah 80%.
+2. **Gladi bersih** dengan satu atau dua kelas memakai perangkat asli, untuk menguji Wi-Fi dan alur pengawas.
 
 ---
 
@@ -629,6 +725,7 @@ Semua fitur di bawah **belum ada** saat ini. Kolom *Fase* menunjukkan usulan pri
 | Backup otomatis harian | Kebutuhan intranet | 1 |
 | Gunakan kembali postingan dari kelas lain | Google Classroom | 2 |
 | Tugas kuis dengan penilaian otomatis | Classroom / Schoology / Canvas | 2 |
+| Mode ujian untuk PTS/PAS: token, ruang tunggu, timer server, acak soal, panel pengawas (§3.8) | Kebutuhan sekolah | 2 |
 | Rubrik | Canvas | 2 |
 | Tampilan penilaian cepat (ala SpeedGrader) | Canvas | 2 |
 | Tab Nilai: buku nilai dengan kategori berbobot | Schoology / Canvas | 2 |
@@ -641,7 +738,6 @@ Semua fitur di bawah **belum ada** saat ini. Kolom *Fase* menunjukkan usulan pri
 | Komentar privat di tugas | Google Classroom | 2 |
 | Pencarian global | Google Drive | 2 |
 | Preview dokumen Office (konversi di server) | Google Drive | 2 |
-| Login lewat LDAP/Active Directory sekolah | Kebutuhan intranet | 2 (jika ada) |
 | Akses Orang Tua (di jaringan sekolah) | Schoology | 3 |
 | Bank soal | Schoology | 3 |
 | Capaian pembelajaran / mastery | Schoology / Canvas | 3 |
@@ -650,10 +746,10 @@ Semua fitur di bawah **belum ada** saat ini. Kolom *Fase* menunjukkan usulan pri
 | Peer review | Canvas | 3 |
 | Riwayat versi & "Perbarui dari Pustaka" | Google Drive | 3 |
 | Ekspor nilai (Excel) & rapor | Kebutuhan lokal | 3 |
-| Email notifikasi (jika ada SMTP intranet) | Semua | 3 |
 
-**Dikeluarkan dari rencana** karena butuh internet atau tidak relevan untuk satu sekolah: masuk dengan Google,
-pemilih Google Drive, embed YouTube, integrasi LTI ke layanan luar, multi-sekolah.
+**Dikeluarkan dari rencana** karena butuh internet atau tidak relevan untuk sekolah ini: masuk dengan Google,
+pemilih Google Drive, embed YouTube, integrasi LTI ke layanan luar, multi-sekolah, notifikasi email,
+login LDAP/Active Directory, dan "Drive Saya" untuk siswa.
 
 ---
 
@@ -664,7 +760,8 @@ Setiap fase ditutup dengan CI hijau dan Feature test untuk semua aturan baru.
 ### Fase 0: Fondasi & perapian
 
 - Perbaiki F1 (versi PHP), F2 (CI), F5 (tipe), F6 (shared props), F7 (identitas, bahasa, zona waktu), F8 (npm saja),
-  F9 (Dependabot), F10 (hapus contoh test), F11 (README).
+  F9 (Dependabot), F10 (hapus contoh test), F11 (README), F18 (CI test di PostgreSQL).
+- Ganti database default ke PostgreSQL dan siapkan Redis di konfigurasi production.
 - Kesiapan intranet: F16 (hapus cek password ke internet), F17 (font lokal), dan aturan "tanpa CDN".
 - Pasang Fortify: login dengan username/NIS, logout, reset password oleh admin, wajib ganti password saat login pertama.
   Kolom `users.role`. Seeder akun demo admin, guru, dan siswa.
@@ -698,14 +795,15 @@ tanpa satu pun permintaan ke internet, dan CI hijau di PHP 8.4.
 
 ### Fase 2: v1 "Classroom lengkap + Canvas"
 
-Gunakan kembali postingan, tugas kuis, pertanyaan, rubrik, tampilan penilaian cepat, tab Nilai, jadwal terbit,
-kalender, Pustaka Sekolah, Sampah, interaksi lanjutan ala Drive, pencarian global, preview dokumen Office,
-dan login LDAP (jika sekolah punya).
+Gunakan kembali postingan, tugas kuis dengan **mode ujian PTS/PAS** (§3.8), pertanyaan, rubrik, tampilan penilaian
+cepat, tab Nilai, jadwal terbit, kalender, Pustaka Sekolah, Sampah, interaksi lanjutan ala Drive, pencarian global,
+dan preview dokumen Office.
+
+**Selesai jika** uji beban 450 siswa lolos target di §3.8 dan gladi bersih dengan perangkat asli berjalan lancar.
 
 ### Fase 3: v2 "Schoology lanjutan"
 
-Akses orang tua, bank soal, mastery, analitik, topik berurutan, peer review, riwayat versi, ekspor rapor,
-dan email (jika ada SMTP intranet).
+Akses orang tua, bank soal, mastery, analitik, topik berurutan, peer review, riwayat versi, dan ekspor rapor.
 
 ---
 
@@ -717,7 +815,8 @@ dan email (jika ada SMTP intranet).
 |---|---|
 | Server tunggal adalah titik gagal tunggal | Backup harian ke NAS/disk terpisah, uji pemulihan rutin, catat prosedur pemulihan di panduan |
 | Kapasitas disk server sekolah habis oleh video | Batas ukuran per file, kuota per guru, laporan pemakaian disk di halaman admin, opsi kompresi video |
-| Beban puncak saat ujian/kuis serentak | Uji beban sebelum dipakai ujian. Session dan cache bisa dipindah ke Redis jika perlu |
+| Server atau Wi-Fi tidak kuat saat 450 siswa ujian serentak | Desain ringan, Redis, uji beban dengan k6, dan gladi bersih sebelum ujian pertama (§3.8) |
+| Siswa lupa password dan tidak ada email untuk reset | Reset cepat oleh wali kelas (bukan hanya admin), aturan password yang ramah siswa (F16) |
 | Pembaruan aplikasi tanpa internet | Paket rilis siap pasang + skrip pemasangan (§3.7) |
 | Fitur menumpuk sampai tidak sederhana lagi | Terapkan prinsip §4.3 di setiap review desain |
 | Data pribadi siswa (UU No. 27/2022 tentang Pelindungan Data Pribadi) | Data tetap di server sekolah. Tetap terapkan Policy akses ketat, log akses, kebijakan retensi data, dan persetujuan orang tua untuk siswa di bawah umur |
@@ -725,12 +824,10 @@ dan email (jika ada SMTP intranet).
 
 ### Keputusan yang masih perlu dijawab
 
-1. **Apakah siswa punya "Drive Saya" sendiri** (misalnya untuk portofolio)? Asumsi: belum di MVP.
-2. **Apakah sekolah sudah punya direktori akun** (LDAP/Active Directory)? Jika ya, login terpusat bisa dinaikkan ke Fase 1.
-3. **Database apa yang paling dikuasai tim IT sekolah?** MariaDB/MySQL atau PostgreSQL. Keduanya didukung.
-4. **Apakah ada server SMTP di intranet?** Jika tidak, semua notifikasi lewat aplikasi saja.
-5. **Spesifikasi server dan jumlah pengguna serentak** (misalnya saat ujian)? Ini menentukan kebutuhan Redis,
-   ukuran disk, dan apakah konversi video layak dijalankan.
+1. **Konfirmasi PostgreSQL** sebagai satu-satunya database resmi (§3.7).
+2. **Apakah server sudah tersedia?** Jika sudah, spesifikasinya dibandingkan dengan usulan di §3.8.
+3. **Kapan ujian pertama yang ingin memakai Falcon?** Jika PAS semester ini, mode ujian perlu dinaikkan prioritasnya
+   dan dikerjakan langsung setelah fondasi, sebelum fitur lain di Fase 1.
 
 ---
 
