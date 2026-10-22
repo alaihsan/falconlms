@@ -1,16 +1,20 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/blank-vue-starter-kit",
+    "name": "alaihsan/falconlms",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Falcon LMS: LMS intranet sekolah dengan tampilan ala Google Drive dan kelas ala Google Classroom.",
     "keywords": [
+        "lms",
         "laravel",
-        "framework"
+        "inertia",
+        "vue",
+        "intranet"
     ],
     "license": "MIT",
     "require": {
-        "php": "^8.3",
+        "php": "^8.4",
         "inertiajs/inertia-laravel": "^3.0",
+        "laravel/fortify": "^1.37.2",
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14"
@@ -46,7 +50,7 @@
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate",
             "@php artisan migrate --force",
-            "npm install",
+            "npm ci",
             "npm run build"
         ],
         "dev": [

@@ -1,0 +1,10 @@
+{
+    "Administrator": "Administrator",
+    "Teacher": "Guru",
+    "Student": "Siswa",
+    "Guardian": "Orang Tua",
+    "My Library": "Pustaka Saya",
+    "Password updated.": "Password berhasil diganti.",
+    "The new password must be different from your username.": "Password baru tidak boleh sama dengan username.",
+    "The new password must be different from your current password.": "Password baru harus berbeda dari password saat ini."
+}

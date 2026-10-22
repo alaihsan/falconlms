@@ -1,9 +1,13 @@
 import { createInertiaApp } from '@inertiajs/vue3';
+import AppLayout from '@/layouts/AppLayout.vue';
+import AuthLayout from '@/layouts/AuthLayout.vue';
+import { initializeFlashToast } from '@/lib/flashToast';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'Falcon LMS';
 
 void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
+    layout: (name) => (name.startsWith('auth/') ? AuthLayout : AppLayout),
     withApp: (app) => {
         app.directive('focus', {
             mounted: (el: HTMLElement, shouldFocus) => {
@@ -14,6 +18,9 @@ void createInertiaApp({
         });
     },
     progress: {
-        color: '#4B5563',
+        color: '#1a66e0',
     },
 });
+
+// This will listen for flash toast data from the server...
+initializeFlashToast();

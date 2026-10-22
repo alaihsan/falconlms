@@ -37,13 +37,13 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
+        // Falcon runs on an intranet without internet access, so the
+        // "uncompromised" check (which calls an external API) is not used.
+        // The rules stay friendly enough for students to remember.
         Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
+            ? Password::min(8)
                 ->letters()
                 ->numbers()
-                ->symbols()
-                ->uncompromised()
             : null,
         );
     }

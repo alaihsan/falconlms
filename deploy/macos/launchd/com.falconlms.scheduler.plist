@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    Falcon LMS: runs Laravel's scheduled tasks every minute.
+    Copy to /Library/LaunchDaemons/ (owner root:wheel, mode 644) so it starts at boot without a login.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.falconlms.scheduler</string>
+    <key>UserName</key>
+    <string>falcon</string>
+    <key>WorkingDirectory</key>
+    <string>/opt/falcon/current</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/opt/php@8.4/bin/php</string>
+        <string>artisan</string>
+        <string>schedule:work</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+    <key>StandardOutPath</key>
+    <string>/opt/falcon/shared/storage/logs/scheduler.log</string>
+    <key>StandardErrorPath</key>
+    <string>/opt/falcon/shared/storage/logs/scheduler.log</string>
+</dict>
+</plist>
