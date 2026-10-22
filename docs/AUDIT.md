@@ -35,9 +35,10 @@ kesederhanaan Classroom.
 | 8 | Jumlah sekolah | Satu sekolah per instalasi (konsekuensi dari keputusan 6) |
 | 9 | Drive siswa | Siswa **tidak** punya "Drive Saya". Siswa hanya melampirkan file saat menyerahkan tugas |
 | 10 | Akun | Dikelola langsung di Falcon (impor CSV/Excel, login username/NIS). **Tanpa LDAP/Active Directory** ([§3.6](#36-rekomendasi-pustaka-teknis-semua-bisa-berjalan-offline)) |
-| 11 | Database | Tim menguasai MySQL dan PostgreSQL. Rekomendasi: **PostgreSQL** sebagai satu-satunya database resmi ([§3.7](#37-deployment-intranet)) |
+| 11 | Database | **PostgreSQL** sebagai satu-satunya database resmi ([§3.7](#37-deployment-intranet)) |
 | 12 | Email | **Tidak ada server email.** Semua notifikasi lewat aplikasi, reset password oleh admin/wali kelas |
-| 13 | Beban puncak | **450 siswa ujian serentak** saat PTS dan PAS (jarang, tapi harus kuat) ([§3.8](#38-ujian-serentak-450-siswa-pts--pas)) |
+| 13 | Pola ujian | **Ulangan harian** per mata pelajaran di waktu yang tidak tentu (skala satu kelas). **PTS dan PAS** serentak sampai **450 siswa** ([§3.8](#38-ujian-ulangan-harian-pts-dan-pas)) |
+| 14 | Server | **Mac mini M2, RAM 8 GB**, berjalan langsung di macOS ([§3.7](#37-deployment-intranet)) |
 
 ---
 
@@ -58,8 +59,10 @@ kesederhanaan Classroom.
    Pustaka Sekolah, dan setiap Kelas adalah Space. Bedanya hanya cara mengelompokkan isi: **Pustaka memakai folder**
    (ala Drive), **Kelas memakai topik** (ala Classroom). Setiap halaman tahu Space dan folder atau topik yang sedang
    dibuka, jadi + Baru cukup mengirim keduanya ke **satu endpoint**. Detail di [§3](#3-rancangan-arsitektur).
-6. **450 siswa ujian serentak bisa dilayani satu server sekolah**, asalkan halaman ujian dirancang ringan,
-   memakai Redis, dan lolos uji beban serta gladi bersih sebelum dipakai. Detail di [§3.8](#38-ujian-serentak-450-siswa-pts--pas).
+6. **Mac mini M2 8 GB cukup untuk 450 siswa ujian serentak, dengan syarat.** CPU M2 lebih dari cukup; yang
+   membatasi adalah RAM 8 GB yang tidak bisa ditambah. Syaratnya: aplikasi berjalan langsung di macOS (tanpa Docker),
+   halaman ujian dirancang ringan, memakai Redis, pekerjaan berat dihentikan saat ada ujian, dan lolos uji beban
+   serta gladi bersih sebelum dipakai. Detail di [§3.8](#38-ujian-ulangan-harian-pts-dan-pas).
 
 ### Skor kesiapan per area
 
@@ -518,10 +521,10 @@ permission tambahan.
 | Font | File font lokal (misalnya `@fontsource/*`) | Build bisa dilakukan tanpa internet (F17) |
 | Editor materi | Tiptap (Vue 3) | Editor teks kaya yang ringan, dibundel lokal |
 | Unggah file besar | Upload bertahap (chunked) ke server sekolah | Video pembelajaran sering ratusan MB, dan jaringan Wi-Fi sekolah bisa putus-sambung |
-| Video | Diputar dari server sekolah dengan pemutar HTML5. Opsional: konversi ke MP4 H.264 dengan ffmpeg di queue | YouTube tidak bisa diakses dari intranet |
-| Preview | Gambar & video native, PDF lewat pdf.js (dibundel lokal), dokumen Office dikonversi ke PDF dengan LibreOffice di server (v1) | Guru dan siswa tidak perlu mengunduh untuk melihat |
-| Pencarian | Laravel Scout (driver database) → Meilisearch di server yang sama jika perlu | Mulai sederhana, bisa ditingkatkan |
-| Notifikasi | Notifikasi di aplikasi (Laravel Notifications, ikon lonceng), lalu real-time dengan Laravel Reverb di v1 | Satu-satunya jalur notifikasi, karena tidak ada server email |
+| Video | Diputar dari server sekolah dengan pemutar HTML5. Opsional: konversi ke MP4 H.264 dengan ffmpeg memakai encoder hardware M2 (`h264_videotoolbox`) | YouTube tidak bisa diakses dari intranet. Encoder hardware jauh lebih ringan daripada encoding lewat CPU |
+| Preview | Gambar & video native, PDF lewat pdf.js (dibundel lokal). Dokumen Office dikonversi ke PDF dengan LibreOffice di queue, satu per satu (v1) | Guru dan siswa tidak perlu mengunduh untuk melihat. LibreOffice boros RAM, jadi tidak boleh paralel |
+| Pencarian | Full-text search bawaan PostgreSQL | Tidak perlu layanan tambahan seperti Meilisearch, hemat RAM |
+| Notifikasi | Notifikasi di aplikasi (Laravel Notifications, ikon lonceng), diperbarui dengan polling ringan | Satu-satunya jalur notifikasi, karena tidak ada server email. Server WebSocket (Reverb) ditunda supaya RAM tidak bertambah |
 
 **Tentang LDAP/Active Directory.** LDAP adalah cara standar untuk membaca "buku akun" terpusat. Active Directory
 adalah produk Microsoft yang paling umum untuk itu. Gunanya: satu username dan password berlaku di semua sistem
@@ -539,20 +542,43 @@ Kode login tetap dibuat rapi supaya LDAP bisa ditambahkan kelak jika sekolah mem
 
 ### 3.7 Deployment intranet
 
-Gambaran instalasi minimal di satu server sekolah:
+Server yang tersedia adalah **Mac mini M2 dengan RAM 8 GB**. Semua komponen dipasang **langsung di macOS lewat
+Homebrew**, tanpa Docker. Docker Desktop di Mac menjalankan mesin virtual Linux yang memakan 2 GB RAM atau lebih,
+padahal RAM adalah sumber daya paling terbatas di server ini.
 
 | Komponen | Usulan |
 |---|---|
-| Sistem operasi | Ubuntu Server LTS |
-| Web server | Nginx + PHP-FPM 8.4 |
-| Database | PostgreSQL |
-| Cache, session, queue | Redis |
-| Queue worker | `php artisan queue:work` dijalankan oleh Supervisor/systemd |
-| Penjadwal | Cron untuk `php artisan schedule:run` (pembersihan Sampah, jadwal terbit, pengingat tenggat) |
-| Alamat | Nama domain lokal, misalnya `falcon.sekolah.lan`, lewat DNS internal |
+| Sistem operasi | macOS (versi yang didukung Apple) |
+| Web server | Nginx + PHP-FPM 8.4 dari Homebrew, dengan ekstensi `pdo_pgsql` dan `redis` |
+| Database | PostgreSQL dari Homebrew |
+| Cache, session, queue | Redis dari Homebrew |
+| Layanan otomatis | Semua layanan didaftarkan sebagai **LaunchDaemon** (`sudo brew services start ...` atau file `.plist`), supaya langsung jalan saat Mac menyala tanpa ada yang login |
+| Queue worker | `php artisan queue:work` sebagai LaunchDaemon. Antrean dipisah: `default` untuk pekerjaan ringan, `heavy` untuk konversi video/dokumen (lihat §3.8) |
+| Penjadwal | `php artisan schedule:work` sebagai LaunchDaemon (pembersihan Sampah, jadwal terbit, pengingat tenggat) |
+| Alamat | IP tetap (reservasi DHCP) dan nama domain lokal, misalnya `falcon.sekolah.lan`, lewat DNS internal |
 | HTTPS | Sertifikat dari CA internal sekolah, dipasang di perangkat sekolah. Diperlukan untuk cookie aman |
+| Jaringan | **Kabel Ethernet**, bukan Wi-Fi |
 | Jam | Sinkron NTP ke server waktu lokal |
-| Backup | Harian: dump database + folder `storage/app` ke NAS atau disk terpisah. Uji pemulihan tiap semester |
+| Backup | Harian: `pg_dump` database + folder `storage/app` ke disk eksternal atau NAS. Time Machine boleh dipakai untuk cadangan sistem, tapi **tidak cukup untuk database** yang sedang berjalan, jadi `pg_dump` tetap wajib. Uji pemulihan tiap semester |
+
+**Pengaturan macOS yang wajib supaya Mac mini layak jadi server:**
+
+| Pengaturan | Nilai | Alasan |
+|---|---|---|
+| Sleep | Tidak pernah sleep (*Prevent automatic sleeping*) | Server harus selalu bisa diakses |
+| Setelah listrik padam | *Start up automatically after a power failure* aktif | Menyala sendiri setelah listrik kembali |
+| Pembaruan macOS | Unduh boleh, **pasang dan restart manual** di luar jam sekolah dan di luar masa ujian | Restart otomatis di tengah ujian adalah risiko terbesar |
+| FileVault | Pilih salah satu (lihat di bawah) | Ada tarik-ulur antara keamanan data dan menyala otomatis |
+| Firewall | Hanya port 80/443 (dan SSH untuk admin) yang terbuka | Mengurangi permukaan serangan dari jaringan sekolah |
+| UPS | Sangat disarankan | Listrik padam saat PTS/PAS = ujian 450 siswa terhenti |
+
+**FileVault:** jika aktif, data di disk terenkripsi (baik untuk perlindungan data siswa). Tapi setelah listrik padam,
+Mac **berhenti di layar password** dan Falcon tidak akan jalan sampai ada yang mengetik password. Rekomendasi:
+**FileVault aktif + UPS**, dan prosedur tertulis untuk petugas IT jika Mac menyala ulang. Jika ruang server sudah
+terkunci dan tidak ada UPS, FileVault boleh dimatikan supaya server menyala sendiri.
+
+**Penyimpanan:** jika SSD internal Mac mini hanya 256 GB, simpan file materi (terutama video) di **SSD eksternal**
+USB-C/Thunderbolt, dan simpan backup di perangkat lain lagi.
 
 **Cara memperbarui aplikasi tanpa internet:** `composer install` dan `npm ci` butuh internet. Karena itu, setiap
 rilis dibuat sebagai **paket siap pasang** di mesin yang punya internet (atau di CI): berisi kode, folder `vendor/`,
@@ -569,32 +595,59 @@ skrip: masuk mode maintenance, ganti kode, `php artisan migrate --force`, bersih
    index). MySQL tidak punya partial index.
 
 Falcon hanya mendukung **satu** database resmi supaya test dan dukungan teknis fokus. CI juga menjalankan test
-terhadap PostgreSQL (F18). Jika sekolah lebih nyaman dengan MySQL, keputusan ini masih bisa diubah sebelum Fase 1
-dimulai, tapi jangan keduanya.
+terhadap PostgreSQL (F18). Keputusan ini sudah disepakati.
 
-### 3.8 Ujian serentak 450 siswa (PTS & PAS)
+### 3.8 Ujian: ulangan harian, PTS, dan PAS
 
-Ujian tengah semester (PTS) dan akhir semester (PAS) adalah satu-satunya saat beban tinggi. Jarang terjadi, tapi
-justru paling berisiko: kalau server lambat saat ujian, kepercayaan guru dan siswa langsung hilang.
+Ada dua jenis ujian dengan kebutuhan berbeda:
 
-**Perkiraan beban**
+| | Ulangan harian | PTS & PAS |
+|---|---|---|
+| Yang mengatur | Guru mata pelajaran, kapan saja | Admin atau wakasek kurikulum, sesuai jadwal sekolah |
+| Skala | Satu kelas (±30–36 siswa). Beberapa kelas bisa ujian di jam yang sama | Sampai 450 siswa serentak di banyak ruang |
+| Cara membuat | + Baru → Tugas kuis di kelas | Jadwal ujian sekolah yang memakai kuis buatan guru |
+| Fitur ujian | Opsional: timer, acak soal, token | Wajib: token, ruang tunggu, timer server, acak soal, pengawas per ruang |
+
+Karena ulangan harian bisa terjadi **kapan saja**, server tidak boleh sedang sibuk dengan pekerjaan berat saat itu.
+Aturannya:
+- **Setiap kali ada ujian berjalan, sekecil apa pun, antrean `heavy` dijeda otomatis.** Antrean ini berisi konversi
+  video dan dokumen. Pekerjaannya dilanjutkan setelah semua ujian selesai.
+- **Skrip pembaruan aplikasi menolak berjalan** jika ada ujian aktif.
+
+**Perkiraan beban PTS/PAS**
 
 | Momen | Yang terjadi | Beban kira-kira |
 |---|---|---|
 | 10–15 menit sebelum mulai | 450 siswa login dan masuk ruang tunggu | Login tersebar, ringan. Jika semua login di menit yang sama, CPU sibuk sesaat karena hashing password |
 | Detik ujian dibuka | 450 siswa memuat soal bersamaan | Lonjakan tertinggi. Soal harus sudah di-cache dan dikirim dalam satu paket |
-| Selama ujian | Jawaban tersimpan otomatis saat berubah (paling sering tiap 15 detik per siswa) | Sekitar 30 request/detik, ringan untuk satu server |
+| Selama ujian | Jawaban tersimpan otomatis saat berubah (paling sering tiap 15 detik per siswa) | Sekitar 30 request/detik, ringan |
 | Waktu habis | 450 jawaban dikirim dalam satu menit | Pengiriman cepat; penilaian otomatis dikerjakan di queue |
 
-**Spesifikasi server awal** (titik awal, harus dibuktikan dengan uji beban):
+**Apakah Mac mini M2 8 GB cukup?**
 
-| Komponen | Usulan |
+- **CPU tidak masalah.** M2 punya 8 core (4 performa + 4 efisiensi) dengan performa per core yang sangat tinggi.
+  Request Falcon yang dirancang ringan selesai dalam puluhan milidetik. Beban sekitar 30 request/detik dan lonjakan
+  450 request saat ujian dibuka masih jauh di bawah kemampuannya.
+- **RAM adalah batasnya.** 8 GB tidak bisa ditambah, jadi harus dibagi dengan disiplin:
+
+| Komponen | RAM kira-kira |
 |---|---|
-| CPU | 8 core (minimal 4) |
-| RAM | 16 GB |
-| Disk | SSD/NVMe untuk sistem dan database. Disk terpisah untuk file materi, ukurannya sesuai kebutuhan video |
-| Jaringan | Server tersambung kabel 1 Gbps ke switch inti |
-| PHP | OPcache aktif, jumlah worker PHP-FPM disetel dari hasil uji beban |
+| macOS dan layanan sistem | 2,5–3 GB |
+| PostgreSQL (`shared_buffers` 1 GB + koneksi) | ±1,5 GB |
+| PHP-FPM (24–32 worker × ±50 MB) | 1,2–1,6 GB |
+| Redis | ±0,2 GB |
+| Nginx, queue worker, penjadwal | ±0,3 GB |
+| Sisa untuk cache file sistem | ±1 GB |
+
+Angka di atas perkiraan awal. Yang penting, **jumlah worker PHP dibatasi** supaya macOS tidak kehabisan RAM lalu
+memakai swap. Begitu swap terjadi, semua request melambat drastis. Lebih baik siswa menunggu sepersekian detik di
+antrean worker daripada server kehabisan RAM.
+
+**Kesimpulan:** cukup untuk 450 siswa, **dengan syarat** semua poin desain di bawah dipenuhi dan uji beban di
+Mac mini itu sendiri lolos target. Jika uji beban gagal, langkah berikutnya berurutan:
+1. setel ulang jumlah worker dan cache;
+2. pakai Laravel Octane, yang menjaga aplikasi tetap di memori sehingga butuh worker lebih sedikit;
+3. baru pertimbangkan Mac mini dengan RAM 16 GB atau lebih.
 
 **Jaringan sekolah lebih sering menjadi titik lemah daripada server.** Satu access point Wi-Fi biasanya nyaman untuk
 sekitar 30–40 perangkat aktif, jadi 450 siswa butuh access point yang cukup dan tersebar di ruang ujian.
@@ -607,25 +660,31 @@ sekitar 30–40 perangkat aktif, jadi 450 siswa butuh access point yang cukup da
   otomatis saat tersambung lagi.
 - Session dan cache disimpan di Redis. Dengan driver `database`, setiap request menulis ke tabel `sessions`,
   sehingga 450 siswa aktif berarti ratusan tulisan per detik yang tidak perlu ke database.
+- Siswa login lebih awal ke **ruang tunggu**, supaya hashing password tidak menumpuk di detik yang sama.
 - Gambar soal dikompres, tanpa aset dari internet.
-- Penilaian otomatis dan rekap nilai dikerjakan di queue, bukan saat siswa menekan "Kirim".
+- Penilaian otomatis dan rekap nilai dikerjakan di queue `default`, bukan saat siswa menekan "Kirim".
+- Antrean `heavy` dijeda selama ada ujian (lihat di atas).
 
-**Fitur mode ujian** (bagian dari Tugas kuis, Fase 2):
+**Fitur ujian** (bagian dari Tugas kuis, Fase 2):
 
-- **Token ujian** yang diumumkan pengawas saat ujian dibuka, dan **ruang tunggu** sebelum jam mulai.
-- **Timer dihitung server**, jadi tidak bisa diakali dengan mengubah jam perangkat.
-- Soal dan pilihan jawaban **diacak per siswa**.
-- **Kirim otomatis** saat waktu habis.
-- **Satu sesi aktif per siswa.** Pengawas bisa **reset login** jika perangkat siswa mati, dan siswa melanjutkan dari
-  jawaban terakhir.
-- **Panel pengawas:** siapa yang belum mulai, sedang mengerjakan, dan sudah selesai.
-- Perpindahan tab **dicatat** sebagai informasi untuk pengawas, bukan diblokir.
+| Fitur | Ulangan harian | PTS & PAS |
+|---|---|---|
+| Timer dihitung server (tidak bisa diakali dengan mengubah jam perangkat) | Opsional | Wajib |
+| Soal dan pilihan jawaban diacak per siswa | Opsional | Wajib |
+| Kirim otomatis saat waktu habis | Jika ada timer | Wajib |
+| Token ujian dari pengawas | Opsional | Wajib |
+| Ruang tunggu sebelum jam mulai | — | Wajib |
+| Satu sesi aktif per siswa; reset login oleh guru/pengawas jika perangkat mati, lanjut dari jawaban terakhir | Ya | Ya |
+| Panel pemantauan: belum mulai, sedang mengerjakan, selesai | Untuk guru | Per ruang, untuk pengawas |
+| Perpindahan tab dicatat (bukan diblokir) | Ya | Ya |
+| Jadwal ujian sekolah: sesi, ruang, pengawas, daftar peserta | — | Diatur admin/kurikulum |
 
-**Uji beban sebelum ujian pertama**
+**Uji beban sebelum PTS/PAS pertama**
 
-1. Uji beban dengan k6 (bisa dijalankan offline) di jaringan sekolah: 450 siswa virtual login, membuka ujian di detik
-   yang sama, menyimpan jawaban selama ujian, lalu mengirim bersamaan.
-   Target: 95% request selesai di bawah 1 detik, tidak ada jawaban yang hilang, CPU server di bawah 80%.
+1. Uji beban dengan k6 (bisa dijalankan offline) **langsung ke Mac mini** di jaringan sekolah: 450 siswa virtual
+   login, membuka ujian di detik yang sama, menyimpan jawaban selama ujian, lalu mengirim bersamaan.
+   Target: 95% request selesai di bawah 1 detik, tidak ada jawaban yang hilang, dan *Memory Pressure* di
+   Activity Monitor tetap hijau tanpa swap.
 2. **Gladi bersih** dengan satu atau dua kelas memakai perangkat asli, untuk menguji Wi-Fi dan alur pengawas.
 
 ---
@@ -725,7 +784,7 @@ Semua fitur di bawah **belum ada** saat ini. Kolom *Fase* menunjukkan usulan pri
 | Backup otomatis harian | Kebutuhan intranet | 1 |
 | Gunakan kembali postingan dari kelas lain | Google Classroom | 2 |
 | Tugas kuis dengan penilaian otomatis | Classroom / Schoology / Canvas | 2 |
-| Mode ujian untuk PTS/PAS: token, ruang tunggu, timer server, acak soal, panel pengawas (§3.8) | Kebutuhan sekolah | 2 |
+| Fitur ujian untuk ulangan harian (opsional) dan PTS/PAS (wajib): token, ruang tunggu, timer server, acak soal, panel pengawas, jadwal ujian sekolah (§3.8) | Kebutuhan sekolah | 2 |
 | Rubrik | Canvas | 2 |
 | Tampilan penilaian cepat (ala SpeedGrader) | Canvas | 2 |
 | Tab Nilai: buku nilai dengan kategori berbobot | Schoology / Canvas | 2 |
@@ -767,7 +826,7 @@ Setiap fase ditutup dengan CI hijau dan Feature test untuk semua aturan baru.
   Kolom `users.role`. Seeder akun demo admin, guru, dan siswa.
 - Pasang shadcn-vue dan lucide. Buat `AppLayout`: sidebar, topbar, kerangka tombol + Baru, breadcrumb.
 - Siapkan disk privat dan controller unduhan dengan cek Policy.
-- Draf panduan instalasi server sekolah dan skrip paket rilis offline.
+- Panduan instalasi Mac mini (Homebrew, LaunchDaemon, pengaturan macOS di §3.7) dan skrip paket rilis offline.
 
 **Selesai jika:** pengguna bisa login dengan username sesuai peran dan melihat layout kosong, aplikasi berjalan
 tanpa satu pun permintaan ke internet, dan CI hijau di PHP 8.4.
@@ -799,7 +858,7 @@ Gunakan kembali postingan, tugas kuis dengan **mode ujian PTS/PAS** (§3.8), per
 cepat, tab Nilai, jadwal terbit, kalender, Pustaka Sekolah, Sampah, interaksi lanjutan ala Drive, pencarian global,
 dan preview dokumen Office.
 
-**Selesai jika** uji beban 450 siswa lolos target di §3.8 dan gladi bersih dengan perangkat asli berjalan lancar.
+**Selesai jika** uji beban 450 siswa langsung ke Mac mini lolos target di §3.8, dan gladi bersih dengan perangkat asli berjalan lancar.
 
 ### Fase 3: v2 "Schoology lanjutan"
 
@@ -814,6 +873,10 @@ Akses orang tua, bank soal, mastery, analitik, topik berurutan, peer review, riw
 | Risiko | Mitigasi |
 |---|---|
 | Server tunggal adalah titik gagal tunggal | Backup harian ke NAS/disk terpisah, uji pemulihan rutin, catat prosedur pemulihan di panduan |
+| RAM Mac mini 8 GB tidak bisa ditambah | Tanpa Docker, worker PHP dibatasi, antrean berat dijeda saat ujian, tanpa layanan tambahan (Meilisearch, Reverb). Jalur upgrade di §3.8 |
+| macOS restart sendiri untuk pembaruan | Pembaruan otomatis dimatikan, dipasang manual di luar jam sekolah dan masa ujian |
+| Mac berhenti di layar password FileVault setelah listrik padam | UPS + prosedur tertulis untuk petugas IT (§3.7) |
+| SSD internal kecil | File materi di SSD eksternal, backup di perangkat terpisah |
 | Kapasitas disk server sekolah habis oleh video | Batas ukuran per file, kuota per guru, laporan pemakaian disk di halaman admin, opsi kompresi video |
 | Server atau Wi-Fi tidak kuat saat 450 siswa ujian serentak | Desain ringan, Redis, uji beban dengan k6, dan gladi bersih sebelum ujian pertama (§3.8) |
 | Siswa lupa password dan tidak ada email untuk reset | Reset cepat oleh wali kelas (bukan hanya admin), aturan password yang ramah siswa (F16) |
@@ -824,10 +887,9 @@ Akses orang tua, bank soal, mastery, analitik, topik berurutan, peer review, riw
 
 ### Keputusan yang masih perlu dijawab
 
-1. **Konfirmasi PostgreSQL** sebagai satu-satunya database resmi (§3.7).
-2. **Apakah server sudah tersedia?** Jika sudah, spesifikasinya dibandingkan dengan usulan di §3.8.
-3. **Kapan ujian pertama yang ingin memakai Falcon?** Jika PAS semester ini, mode ujian perlu dinaikkan prioritasnya
-   dan dikerjakan langsung setelah fondasi, sebelum fitur lain di Fase 1.
+1. **Berapa kapasitas SSD Mac mini, dan apakah ada UPS?** Ini menentukan perlu tidaknya SSD eksternal dan pilihan FileVault (§3.7).
+2. **Kapan PTS/PAS pertama yang ingin memakai Falcon?** Urutan default: Fase 0 → 1 → 2 (fitur ujian ada di Fase 2).
+   Jika PAS semester ini harus sudah memakai Falcon, fitur ujian perlu dikerjakan langsung setelah Fase 0.
 
 ---
 
