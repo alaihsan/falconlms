@@ -1,0 +1,38 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * Files and links attached to an item or to a student's submission.
+     */
+    public function up(): void
+    {
+        Schema::create('attachments', function (Blueprint $table) {
+            $table->id();
+            $table->morphs('attachable');
+            $table->string('kind');
+            $table->string('disk')->nullable();
+            $table->string('path')->nullable();
+            $table->string('original_name')->nullable();
+            $table->string('mime')->nullable();
+            $table->unsignedBigInteger('size')->nullable();
+            $table->text('url')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('attachments');
+    }
+};

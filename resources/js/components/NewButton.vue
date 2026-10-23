@@ -6,9 +6,15 @@ import {
     FileUp,
     FolderPlus,
     FolderUp,
+    GraduationCap,
+    Library,
     Link2,
-    ListChecks,
+    LogIn,
+    Megaphone,
     Plus,
+    Tag,
+    Upload,
+    UserPlus,
 } from '@lucide/vue';
 import type { LucideIcon } from '@lucide/vue';
 import { computed } from 'vue';
@@ -22,6 +28,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useSidebar } from '@/components/ui/sidebar';
+import { useNewActions } from '@/composables/useNewActions';
 import { cn } from '@/lib/utils';
 import type { CreationContext, NewMenuItem } from '@/types';
 
@@ -31,14 +38,35 @@ const MENU: Record<NewMenuItem, { label: string; icon: LucideIcon }> = {
     upload_folder: { label: 'Unggah folder', icon: FolderUp },
     material: { label: 'Materi', icon: BookOpenText },
     assignment: { label: 'Tugas', icon: ClipboardList },
-    quiz: { label: 'Kuis', icon: ListChecks },
     link: { label: 'Tautan', icon: Link2 },
+    topic: { label: 'Topik', icon: Tag },
+    from_library: { label: 'Dari Pustaka…', icon: Library },
+    announcement: { label: 'Pengumuman', icon: Megaphone },
+    add_members: { label: 'Tambah anggota', icon: UserPlus },
+    course: { label: 'Kelas baru', icon: GraduationCap },
+    join_course: { label: 'Gabung kelas', icon: LogIn },
+    user: { label: 'Pengguna baru', icon: UserPlus },
+    import_users: { label: 'Impor pengguna (CSV)', icon: Upload },
 };
 
 const GROUPS: NewMenuItem[][] = [
-    ['folder'],
+    ['announcement'],
+    ['folder', 'topic'],
     ['upload', 'upload_folder'],
-    ['material', 'assignment', 'quiz', 'link'],
+    ['material', 'assignment', 'link'],
+    ['from_library'],
+    ['add_members'],
+    ['course', 'join_course'],
+    ['user', 'import_users'],
+];
+
+// Entries that do not save into the current space.
+const NOT_SAVED_HERE: NewMenuItem[] = [
+    'course',
+    'join_course',
+    'user',
+    'import_users',
+    'add_members',
 ];
 
 const { floating = false } = defineProps<{
@@ -47,6 +75,7 @@ const { floating = false } = defineProps<{
 }>();
 
 const page = usePage<{ context?: CreationContext }>();
+const { run } = useNewActions();
 const context = computed(() => page.props.context ?? null);
 
 const groups = computed(() =>
@@ -56,9 +85,14 @@ const groups = computed(() =>
 );
 
 // Always show the user where new content will land, like a breadcrumb.
+const showsDestination = computed(
+    () =>
+        !!context.value?.space &&
+        context.value?.allowed.some((item) => !NOT_SAVED_HERE.includes(item)),
+);
 const destination = computed(() =>
     [
-        context.value?.space.name,
+        context.value?.space?.name,
         context.value?.folder?.name,
         context.value?.topic?.name,
     ]
@@ -101,29 +135,29 @@ const collapsed = computed(
             :side-offset="8"
             class="w-64"
         >
-            <DropdownMenuLabel
-                class="text-xs font-normal text-muted-foreground"
-                data-test="new-destination"
-            >
-                Disimpan di
-                <span class="font-medium text-foreground">{{
-                    destination
-                }}</span>
-            </DropdownMenuLabel>
-            <template v-for="group in groups" :key="group.join()">
+            <template v-if="showsDestination">
+                <DropdownMenuLabel
+                    class="text-xs font-normal text-muted-foreground"
+                    data-test="new-destination"
+                >
+                    Disimpan di
+                    <span class="font-medium text-foreground">{{
+                        destination
+                    }}</span>
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+            </template>
+            <template v-for="(group, index) in groups" :key="group.join()">
+                <DropdownMenuSeparator v-if="index > 0" />
                 <DropdownMenuGroup>
-                    <!-- Saving content arrives in the next phase. -->
                     <DropdownMenuItem
                         v-for="item in group"
                         :key="item"
-                        disabled
+                        :data-test="`new-${item}`"
+                        @select="run(item)"
                     >
                         <component :is="MENU[item].icon" />
                         {{ MENU[item].label }}
-                        <span class="ml-auto text-xs text-muted-foreground"
-                            >Segera</span
-                        >
                     </DropdownMenuItem>
                 </DropdownMenuGroup>
             </template>

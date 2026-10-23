@@ -9,6 +9,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
+import { toUrl } from '@/lib/utils';
 import type { NavItem } from '@/types';
 
 defineProps<{
@@ -16,7 +17,11 @@ defineProps<{
     label?: string;
 }>();
 
-const { isCurrentUrl } = useCurrentUrl();
+const { isCurrentUrl, isCurrentOrParentUrl } = useCurrentUrl();
+
+// Sections such as Pustaka Saya stay highlighted inside their sub-pages.
+const isActive = (href: NonNullable<NavItem['href']>) =>
+    isCurrentUrl(href) || (toUrl(href) !== '/' && isCurrentOrParentUrl(href));
 </script>
 
 <template>
@@ -27,7 +32,7 @@ const { isCurrentUrl } = useCurrentUrl();
                 <SidebarMenuButton
                     v-if="item.href"
                     as-child
-                    :is-active="isCurrentUrl(item.href)"
+                    :is-active="isActive(item.href)"
                     :tooltip="item.title"
                 >
                     <Link :href="item.href">

@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { Search } from '@lucide/vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import { Bell } from '@lucide/vue';
+import { computed } from 'vue';
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { index as notifications } from '@/routes/notifications';
 import type { BreadcrumbItem } from '@/types';
 
 withDefaults(
@@ -12,6 +15,9 @@ withDefaults(
         breadcrumbs: () => [],
     },
 );
+
+const page = usePage();
+const unread = computed(() => page.props.nav?.unreadNotifications ?? 0);
 </script>
 
 <template>
@@ -25,14 +31,18 @@ withDefaults(
             </template>
         </div>
 
-        <!-- Search arrives together with content in the next phase. -->
-        <div
-            class="ml-auto hidden w-full max-w-md items-center gap-2 rounded-full bg-muted px-4 py-2 text-sm text-muted-foreground md:flex"
-            title="Pencarian hadir di tahap berikutnya"
-            aria-disabled="true"
+        <Link
+            :href="notifications()"
+            class="relative ml-auto flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            :aria-label="`Notifikasi (${unread} belum dibaca)`"
+            data-test="notifications-bell"
         >
-            <Search class="size-4" />
-            <span>Cari materi, kelas, tugas…</span>
-        </div>
+            <Bell class="size-5" />
+            <span
+                v-if="unread > 0"
+                class="absolute top-1 right-1 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] leading-4 font-medium text-white"
+                >{{ unread > 99 ? '99+' : unread }}</span
+            >
+        </Link>
     </header>
 </template>

@@ -15,8 +15,8 @@ Latar belakang keputusan-keputusan di sini ada di [AUDIT.md §3.7 dan §3.8](AUD
 | PHP-FPM 8.4   | Menjalankan aplikasi Falcon         | Layanan Homebrew, menyala saat boot    |
 | PostgreSQL 17 | Database                            | Layanan Homebrew, menyala saat boot    |
 | Redis         | Session, cache, dan antrean         | Layanan Homebrew, menyala saat boot    |
-| Queue worker  | Pekerjaan di latar belakang         | LaunchDaemon `com.falconlms.queue`     |
-| Scheduler     | Tugas terjadwal tiap menit          | LaunchDaemon `com.falconlms.scheduler` |
+| Queue worker  | Notifikasi dan pekerjaan latar      | LaunchDaemon `com.falconlms.queue`     |
+| Scheduler     | Tugas terjadwal, termasuk backup    | LaunchDaemon `com.falconlms.scheduler` |
 
 Struktur folder di server:
 
@@ -34,6 +34,7 @@ Struktur folder di server:
 ## 0. Yang perlu disiapkan
 
 - Mac mini, **SSD eksternal** (USB-C/Thunderbolt) untuk file materi, UPS, dan kabel LAN.
+- **Disk backup** terpisah dari SSD `FalconData`, misalnya HDD/SSD eksternal kedua atau folder NAS sekolah.
 - **Koneksi internet sementara** saat instalasi awal, untuk memasang Homebrew dan paket-paketnya. Setelah selesai,
   Mac mini boleh diputus dari internet. Pembaruan Falcon berikutnya memakai paket rilis offline.
 - Satu komputer lain yang punya internet (PHP 8.4, Composer, Node 22) untuk membuat paket rilis.
@@ -56,6 +57,10 @@ Struktur folder di server:
 7. **SSD eksternal:** format sebagai APFS dengan nama `FalconData`, lalu buat foldernya:
     ```bash
     mkdir -p /Volumes/FalconData/app/private
+    ```
+8. **Disk backup:** format sebagai APFS dengan nama `FalconBackup`, lalu buat foldernya:
+    ```bash
+    mkdir -p /Volumes/FalconBackup/falcon
     ```
 
 ## 2. Pasang perangkat lunak (butuh internet sementara)
@@ -168,7 +173,17 @@ SESSION_DRIVER=redis
 SESSION_SECURE_COOKIE=true
 CACHE_STORE=redis
 QUEUE_CONNECTION=redis
+
+# Nginx yang mengirim file setelah Falcon mengecek hak akses (hemat worker PHP untuk video besar)
+FALCON_X_ACCEL_REDIRECT=/_protected
+
+# Backup harian pukul 02.00 ke disk backup (bukan SSD FalconData)
+FALCON_BACKUP_PATH=/Volumes/FalconBackup/falcon
+FALCON_BACKUP_KEEP_DAYS=14
 ```
+
+> Batas unggah bawaan 100 MB per file. Jika `FALCON_UPLOAD_MAX_MB` dinaikkan, naikkan juga `upload_max_filesize`
+> dan `post_max_size` di `php-fpm-falcon.conf` serta `client_max_body_size` di `nginx-falcon.conf`.
 
 ## 7. PHP-FPM, Nginx, dan HTTPS
 
@@ -200,7 +215,8 @@ php artisan falcon:create-user admin "Administrator" --role=admin
 
 Perintah terakhir menampilkan **password sementara** untuk akun admin. Admin wajib menggantinya saat login pertama.
 
-Pasang queue worker dan scheduler sebagai LaunchDaemon:
+Pasang queue worker dan scheduler sebagai LaunchDaemon. **Keduanya wajib:** tanpa queue worker notifikasi tidak
+terkirim, tanpa scheduler backup harian tidak berjalan.
 
 ```bash
 sudo cp /opt/falcon/current/deploy/macos/launchd/com.falconlms.*.plist /Library/LaunchDaemons/
@@ -215,11 +231,26 @@ sudo launchctl bootstrap system /Library/LaunchDaemons/com.falconlms.scheduler.p
 - `curl -k https://falcon.sekolah.lan/up` menjawab `200`.
 - Login sebagai admin dari laptop lain di jaringan sekolah, lalu ganti password sementara.
 - `sudo launchctl print system/com.falconlms.queue` menunjukkan `state = running`.
+- Uji backup sekali: `cd /opt/falcon/current && php artisan falcon:backup`, lalu pastikan ada file `.dump` di
+  `/Volumes/FalconBackup/falcon/database`.
+- Buka satu file PDF yang diunggah guru. Jika muncul 404, periksa blok `location /_protected/` di Nginx.
 - Di _Activity Monitor → Memory_, grafik _Memory Pressure_ tetap hijau.
 
 ## Mengelola akun
 
-Sampai halaman kelola pengguna tersedia (Fase 1), akun dikelola dari Terminal di Mac mini:
+Akun dikelola dari halaman **Pengguna** (menu admin): buat akun, ubah peran, reset password, dan impor CSV. Hasil
+impor berisi slip password sementara yang bisa langsung dicetak. Password sementara hanya tampil sekali.
+
+Format CSV (pemisah `;` atau `,`, baris pertama judul kolom). Kolom `peran` boleh `siswa`, `guru`, `admin`, atau
+`orang tua`; jika kosong dianggap siswa.
+
+```csv
+username;nama;peran
+0012345678;Budi Santoso;siswa
+guru.rina;Rina Wati;guru
+```
+
+Jika admin tidak bisa login, akun juga bisa dikelola dari Terminal di Mac mini:
 
 ```bash
 cd /opt/falcon/current
@@ -258,21 +289,40 @@ Tempel prosedur ini di dekat Mac mini dan pastikan lebih dari satu orang tahu pa
 
 ## Cadangan (backup)
 
-Backup otomatis harian dijadwalkan di Fase 1. Sampai saat itu, jalankan secara manual minimal seminggu sekali ke
-disk lain (bukan SSD `FalconData`):
+Setiap hari pukul 02.00 scheduler menjalankan `php artisan falcon:backup` ke `FALCON_BACKUP_PATH`:
+
+- `database/falcon-<tanggal>-<jam>.dump`: isi database (format `pg_dump` custom). Yang lebih tua dari
+  `FALCON_BACKUP_KEEP_DAYS` hari dihapus otomatis.
+- `files/`: salinan file unggahan dengan `rsync`. File yang terhapus di Falcon **tidak** ikut terhapus dari backup,
+  jadi masih bisa dipulihkan.
+
+Hasilnya tercatat di `storage/logs/laravel.log`. Periksa isi disk backup minimal sebulan sekali, dan **cobalah
+memulihkan** ke komputer lain setiap semester, supaya yakin backup benar-benar bisa dipakai.
+
+Memulihkan (di luar jam sekolah):
 
 ```bash
-pg_dump -Fc falcon > /Volumes/Backup/falcon-$(date +%Y%m%d).dump
-rsync -a /Volumes/FalconData/app/ /Volumes/Backup/app/
+cd /opt/falcon/current
+php artisan down
+
+# Database: ganti isi database falcon dengan isi file backup
+pg_restore --clean --if-exists --no-owner -d falcon /Volumes/FalconBackup/falcon/database/falcon-<tanggal>-<jam>.dump
+
+# File unggahan
+rsync -a /Volumes/FalconBackup/falcon/files/ /Volumes/FalconData/app/private/
+
+php artisan up
 ```
 
 Time Machine boleh tetap dipakai untuk cadangan sistem, tapi **tidak cukup untuk database** yang sedang berjalan.
 
 ## Masalah umum
 
-| Gejala                                 | Penyebab yang mungkin                         | Yang dilakukan                                         |
-| -------------------------------------- | --------------------------------------------- | ------------------------------------------------------ |
-| Browser menampilkan _502 Bad Gateway_  | PHP-FPM tidak berjalan                        | `sudo brew services restart php@8.4`                   |
-| Perubahan `.env` tidak berpengaruh     | Pengaturan tersimpan di cache                 | `cd /opt/falcon/current && php artisan optimize`       |
-| Peringatan sertifikat di browser       | Sertifikat CA belum dipasang di perangkat itu | Pasang sertifikat CA sekolah di perangkat tersebut     |
-| Halaman "Sedang dalam perawatan" terus | Pembaruan berhenti di tengah jalan            | Lihat bagian [Memperbarui Falcon](#memperbarui-falcon) |
+| Gejala                                 | Penyebab yang mungkin                         | Yang dilakukan                                           |
+| -------------------------------------- | --------------------------------------------- | -------------------------------------------------------- |
+| Browser menampilkan _502 Bad Gateway_  | PHP-FPM tidak berjalan                        | `sudo brew services restart php@8.4`                     |
+| Perubahan `.env` tidak berpengaruh     | Pengaturan tersimpan di cache                 | `cd /opt/falcon/current && php artisan optimize`         |
+| Peringatan sertifikat di browser       | Sertifikat CA belum dipasang di perangkat itu | Pasang sertifikat CA sekolah di perangkat tersebut       |
+| Halaman "Sedang dalam perawatan" terus | Pembaruan berhenti di tengah jalan            | Lihat bagian [Memperbarui Falcon](#memperbarui-falcon)   |
+| Lonceng notifikasi tidak pernah berisi | Queue worker tidak berjalan                   | `sudo launchctl kickstart -k system/com.falconlms.queue` |
+| Unggahan gagal dengan pesan _413_      | File lebih besar dari batas Nginx/PHP         | Lihat catatan batas unggah di langkah 6                  |

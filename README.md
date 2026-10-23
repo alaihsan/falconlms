@@ -9,18 +9,25 @@ materi masuk ke kelas itu.
 
 ## Status
 
-**Fase 0 (fondasi) selesai:**
+**Fase 0 (fondasi) dan Fase 1 (MVP Pustaka + Kelas ala Classroom) selesai.** Rincian dan catatannya ada di
+[docs/AUDIT.md §6](docs/AUDIT.md#6-roadmap).
 
-- Login dengan username atau NIS. Tidak ada registrasi mandiri dan tidak ada fitur lewat email, karena intranet sekolah
-  tidak punya server email.
-- Peran Admin, Guru, Siswa (Orang Tua disiapkan untuk tahap berikutnya).
-- Akun baru dan reset password memakai password sementara yang wajib diganti saat login berikutnya.
-- Layout ala Drive: sidebar, tombol **+ Baru** (juga sebagai tombol mengambang di HP), breadcrumb, dan Beranda.
-  Isi menu + Baru dikirim server sesuai halaman dan peran. Menyimpan konten hadir di Fase 1.
+- **Login** dengan username atau NIS, peran Admin, Guru, Siswa. Tidak ada registrasi mandiri dan tidak ada fitur
+  lewat email, karena intranet sekolah tidak punya server email.
+- **Tombol + Baru yang paham posisi halaman.** Dari Beranda atau Pustaka Saya, materi masuk ke Pustaka Saya (folder
+  yang sedang dibuka). Dari dalam kelas, materi masuk ke kelas itu (topik yang sedang dipilih).
+- **Pustaka Saya** ala Google Drive: folder bertingkat, unggah file dan folder (juga drag & drop), materi dengan
+  editor teks, tautan, dan preview gambar, video, audio, dan PDF.
+- **Kelas ala Google Classroom:** kode kelas, tab Forum, Tugas Kelas dengan Topik (urutan bisa digeser), dan Anggota.
+  "Dari Pustaka…" menyalin materi ke kelas; satu folder menjadi satu topik.
+- **Tugas:** siswa melampirkan file dan menyerahkan, guru menilai dan mengembalikan dengan catatan. Ada halaman
+  To-do dan notifikasi di aplikasi.
+- **Admin:** kelola pengguna, impor CSV dengan slip password yang bisa dicetak, dan reset password.
+- **Backup harian otomatis** database dan file ke disk terpisah.
 - Berjalan tanpa internet: font dibundel lokal dan tidak ada aset dari CDN.
-- PostgreSQL sebagai database.
 
-**Berikutnya, Fase 1:** Pustaka Saya, kelas dengan Topik, tugas, kelola pengguna, dan backup harian.
+**Berikutnya, Fase 2:** kuis dengan mode ujian PTS/PAS, rubrik, tab Nilai, kalender, Pustaka Sekolah, Sampah, dan
+pencarian.
 
 ## Kebutuhan
 
@@ -59,6 +66,21 @@ php artisan falcon:create-user 0012345678 "Budi Santoso" --role=student
 # Lupa password: buat password sementara baru
 php artisan falcon:reset-password 0012345678
 ```
+
+Biasanya akun dikelola dari halaman **Pengguna** di aplikasi. Perintah di atas untuk keadaan darurat, misalnya admin
+lupa password.
+
+## Layanan latar belakang
+
+Notifikasi dikirim lewat antrean dan backup berjalan dari scheduler, jadi keduanya harus menyala:
+
+```bash
+php artisan queue:work          # di production: LaunchDaemon com.falconlms.queue
+php artisan schedule:work       # di production: LaunchDaemon com.falconlms.scheduler
+php artisan falcon:backup       # backup manual ke FALCON_BACKUP_PATH
+```
+
+`composer dev` sudah menjalankan queue worker untuk development.
 
 ## Pengecekan
 

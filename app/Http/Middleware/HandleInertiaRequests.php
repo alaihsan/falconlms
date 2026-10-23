@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Space;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -43,6 +44,8 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            // Dates are shown in the school's time zone, whatever the device clock says.
+            'timezone' => config('app.timezone'),
             'auth' => [
                 'user' => $user ? [
                     'id' => $user->id,
@@ -51,6 +54,16 @@ class HandleInertiaRequests extends Middleware
                     'role' => $user->role->value,
                     'role_label' => $user->role->label(),
                 ] : null,
+            ],
+            'nav' => fn () => $user ? [
+                'courses' => $user->courses()->orderBy('name')->get(['spaces.id', 'spaces.name'])
+                    ->map(fn (Space $course) => ['id' => $course->id, 'name' => $course->name])
+                    ->values(),
+                'unreadNotifications' => $user->unreadNotifications()->count(),
+            ] : null,
+            'uploads' => [
+                'maxBytes' => config('falcon.uploads.max_kilobytes') * 1024,
+                'maxFiles' => config('falcon.uploads.max_files'),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

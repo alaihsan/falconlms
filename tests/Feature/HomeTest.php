@@ -1,28 +1,22 @@
 <?php
 
+use App\Models\Item;
+use App\Models\Space;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
-test('teachers get the library entries in the new menu', function () {
+test('teachers see their classes and recent library items on the home page', function () {
     $teacher = User::factory()->teacher()->create();
+    $course = Space::factory()->withTeacher($teacher)->create(['name' => 'Biologi XI']);
+    Item::factory()->create(['space_id' => Space::personalLibraryFor($teacher)->id, 'title' => 'Sel hewan']);
 
     $this->actingAs($teacher)
         ->get(route('home'))
         ->assertInertia(fn (Assert $page) => $page
             ->component('Home')
-            ->where('context.space.kind', 'personal_library')
-            ->where('context.allowed', ['folder', 'upload', 'upload_folder', 'material', 'assignment', 'quiz', 'link']),
-        );
-});
-
-test('students get no new menu on the home page', function () {
-    $student = User::factory()->create();
-
-    $this->actingAs($student)
-        ->get(route('home'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Home')
-            ->where('context.allowed', []),
+            ->where('courses.0.id', $course->id)
+            ->where('courses.0.role', 'teacher')
+            ->where('recent.0.title', 'Sel hewan'),
         );
 });
 

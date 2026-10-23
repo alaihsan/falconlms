@@ -2,7 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Item;
+use App\Models\Submission;
+use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -32,6 +37,16 @@ class AppServiceProvider extends ServiceProvider
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
+
+        // Store short names instead of class names in polymorphic columns.
+        Relation::enforceMorphMap([
+            'user' => User::class,
+            'item' => Item::class,
+            'submission' => Submission::class,
+        ]);
+
+        // Catch lazy loading and mass assignment mistakes while developing.
+        Model::shouldBeStrict(! app()->isProduction());
 
         DB::prohibitDestructiveCommands(
             app()->isProduction(),

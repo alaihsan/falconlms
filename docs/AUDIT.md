@@ -2,11 +2,11 @@
 
 |                         |                                                                                                      |
 | ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| **Tanggal**             | 22 Oktober 2026 (revisi 4)                                                                           |
+| **Tanggal**             | 23 Oktober 2026 (revisi 5)                                                                           |
 | **Commit yang diaudit** | `84bcdd4` ("first commit")                                                                           |
 | **Branch audit**        | `claude/audit-falcon-lms-wu1e2m`                                                                     |
 | **Lingkup**             | Kondisi kode saat ini, analisis kekurangan dibanding goal produk, rancangan arsitektur & UX, roadmap |
-| **Perubahan kode**      | Audit tidak mengubah kode. Fase 0 sudah diimplementasikan (lihat [§6](#fase-0-fondasi--perapian)).   |
+| **Perubahan kode**      | Audit tidak mengubah kode. Fase 0 dan Fase 1 sudah diimplementasikan (lihat [§6](#6-roadmap)).       |
 
 ### Goal produk (sesuai brief)
 
@@ -23,27 +23,30 @@ kesederhanaan Classroom.
 
 ### Keputusan yang sudah disepakati
 
-| #   | Topik                 | Keputusan                                                                                                                                                                        |
-| --- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Lingkup               | Audit + rancangan dulu, lalu implementasi menunggu persetujuan                                                                                                                   |
-| 2   | Pustaka               | Dua lapis: **Pustaka Saya** (pribadi guru) dan **Pustaka Sekolah** (bersama). Keduanya memakai folder ala Drive                                                                  |
-| 3   | Peran                 | Admin, Guru, Siswa sejak awal. **Orang Tua** di tahap berikutnya                                                                                                                 |
-| 4   | + Baru di dalam kelas | Tersimpan di kelas, dengan opsi centang **"Simpan juga ke Pustaka Saya"**                                                                                                        |
-| 5   | Bahasa                | Bahasa Indonesia, disiapkan i18n supaya bisa ditambah bahasa lain                                                                                                                |
-| 6   | Jaringan              | **Murni intranet**: server di sekolah, tanpa ketergantungan ke internet saat aplikasi berjalan                                                                                   |
-| 7   | Isi kelas             | **Persis Google Classroom**: tab Forum, Tugas Kelas, Anggota, Nilai. Materi dikelompokkan dengan **Topik** (satu tingkat), bukan folder                                          |
-| 8   | Jumlah sekolah        | Satu sekolah per instalasi (konsekuensi dari keputusan 6)                                                                                                                        |
-| 9   | Drive siswa           | Siswa **tidak** punya "Drive Saya". Siswa hanya melampirkan file saat menyerahkan tugas                                                                                          |
-| 10  | Akun                  | Dikelola langsung di Falcon (impor CSV/Excel, login username/NIS). **Tanpa LDAP/Active Directory** ([§3.6](#36-rekomendasi-pustaka-teknis-semua-bisa-berjalan-offline))          |
-| 11  | Database              | **PostgreSQL** sebagai satu-satunya database resmi ([§3.7](#37-deployment-intranet))                                                                                             |
-| 12  | Email                 | **Tidak ada server email.** Semua notifikasi lewat aplikasi, reset password oleh admin/wali kelas                                                                                |
-| 13  | Pola ujian            | **Ulangan harian** per mata pelajaran di waktu yang tidak tentu (skala satu kelas). **PTS dan PAS** serentak sampai **450 siswa** ([§3.8](#38-ujian-ulangan-harian-pts-dan-pas)) |
-| 14  | Server                | **Mac mini M2, RAM 8 GB, SSD 256 GB, dengan UPS**, berjalan langsung di macOS ([§3.7](#37-deployment-intranet))                                                                  |
-| 15  | Penyimpanan & daya    | File materi di **SSD eksternal** karena SSD internal hanya 256 GB. **FileVault aktif**, karena ada UPS ([§3.7](#37-deployment-intranet))                                         |
+| #   | Topik                 | Keputusan                                                                                                                                                                             |
+| --- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Lingkup               | Audit + rancangan dulu, lalu implementasi menunggu persetujuan                                                                                                                        |
+| 2   | Pustaka               | Dua lapis: **Pustaka Saya** (pribadi guru) dan **Pustaka Sekolah** (bersama). Keduanya memakai folder ala Drive                                                                       |
+| 3   | Peran                 | Admin, Guru, Siswa sejak awal. **Orang Tua** di tahap berikutnya                                                                                                                      |
+| 4   | + Baru di dalam kelas | Tersimpan di kelas, dengan opsi centang **"Simpan juga ke Pustaka Saya"**                                                                                                             |
+| 5   | Bahasa                | Bahasa Indonesia, disiapkan i18n supaya bisa ditambah bahasa lain                                                                                                                     |
+| 6   | Jaringan              | **Murni intranet**: server di sekolah, tanpa ketergantungan ke internet saat aplikasi berjalan                                                                                        |
+| 7   | Isi kelas             | **Persis Google Classroom**: tab Forum, Tugas Kelas, Anggota, Nilai. Materi dikelompokkan dengan **Topik** (satu tingkat), bukan folder                                               |
+| 8   | Jumlah sekolah        | Satu sekolah per instalasi (konsekuensi dari keputusan 6)                                                                                                                             |
+| 9   | Drive siswa           | Siswa **tidak** punya "Drive Saya". Siswa hanya melampirkan file saat menyerahkan tugas                                                                                               |
+| 10  | Akun                  | Dikelola langsung di Falcon (impor CSV/Excel, login username/NIS). **Tanpa LDAP/Active Directory** ([§3.6](#36-rekomendasi-pustaka-teknis-semua-bisa-berjalan-offline))               |
+| 11  | Database              | **PostgreSQL** sebagai satu-satunya database resmi ([§3.7](#37-deployment-intranet))                                                                                                  |
+| 12  | Email                 | **Tidak ada server email.** Semua notifikasi lewat aplikasi, reset password oleh admin/wali kelas                                                                                     |
+| 13  | Pola ujian            | **Ulangan harian** per mata pelajaran di waktu yang tidak tentu (skala satu kelas). **PTS dan PAS** serentak sampai **450 siswa** ([§3.8](#38-ujian-ulangan-harian-pts-dan-pas))      |
+| 14  | Server                | **Mac mini M2, RAM 8 GB, SSD 256 GB, dengan UPS**, berjalan langsung di macOS ([§3.7](#37-deployment-intranet))                                                                       |
+| 15  | Penyimpanan & daya    | File materi di **SSD eksternal** karena SSD internal hanya 256 GB. **FileVault aktif**, karena ada UPS ([§3.7](#37-deployment-intranet))                                              |
+| 16  | CI                    | **Tanpa GitHub Actions dan Dependabot** supaya tidak ada biaya. Pengecekan dijalankan di komputer developer, dan `scripts/build-release.sh` menolak membuat paket jika ada yang gagal |
 
 ---
 
 ## 1. Ringkasan eksekutif
+
+> Bagian 1 dan 2 menggambarkan kondisi saat audit (commit `84bcdd4`). Status terbaru ada di [§6](#6-roadmap).
 
 1. **Fitur LMS belum ada sama sekali.** Repo masih berupa _Laravel Blank Vue Starter Kit_ tanpa perubahan:
    satu halaman `Welcome.vue`, satu model `User`, migrasi bawaan, dan satu route `/`. Belum ada login, kelas,
@@ -156,6 +159,9 @@ action yang direferensikan tidak bisa di-resolve.
 **Perbaikan:** buka tab _Annotations_ di halaman run untuk melihat alasan resminya, lalu cek
 _Settings → Actions → General_ dan _Settings → Billing_ di akun GitHub. Setelah runner jalan, CI akan menjalankan
 lint, tipe, Pint, PHPStan, dan Pest.
+**Status: ditutup dengan cara lain (keputusan 16).** GitHub Actions dan Dependabot dihapus karena memakan biaya.
+Pengecekan yang sama (`composer ci:check`, ditambah test di PostgreSQL) dijalankan di komputer developer, dan
+`scripts/build-release.sh` menjalankannya otomatis sebelum membuat paket rilis.
 
 #### F3. Belum ada autentikasi dan peran
 
@@ -228,6 +234,8 @@ versi paket yang berbeda dari lockfile.
 
 **Sedang.** `.github/dependabot.yml` tidak memantau `composer` dan `npm`, padahal kerentanan paling sering datang dari situ.
 **Perbaikan:** tambahkan ekosistem `composer` dan `npm` dengan `cooldown` dan pengelompokan yang sama.
+**Status: diganti.** Dependabot dihapus bersama GitHub Actions (keputusan 16). Sebagai gantinya,
+`scripts/build-release.sh` menjalankan `composer audit` dan `npm audit` sebelum setiap rilis.
 
 #### F10. Test hampir tidak ada
 
@@ -242,6 +250,8 @@ versi paket yang berbeda dari lockfile.
 tipe data, perbandingan teks, constraint, dan query `LIKE`. Bug bisa lolos test lalu muncul di server sekolah.
 **Perbaikan:** di CI, jalankan Pest terhadap PostgreSQL (service container). SQLite boleh tetap dipakai untuk test
 cepat di laptop developer.
+**Status: diganti.** Tanpa CI, test PostgreSQL dijalankan di komputer developer sebelum rilis (perintahnya ada di
+README). Semua test Fase 1 lulus di SQLite dan PostgreSQL.
 
 #### F11. Belum ada README dan panduan instalasi
 
@@ -442,6 +452,19 @@ Catatan desain:
 - **Modul ala Canvas tidak dibuat sebagai konsep baru.** Kalau nanti dibutuhkan, cukup jadi opsi di Topik:
   "buka topik berikutnya setelah topik ini selesai" (v2, disembunyikan di pengaturan lanjutan).
 - **Sampah** cukup dengan _soft delete_ (`deleted_at`) dan pembersihan otomatis setelah 30 hari.
+
+**Yang berbeda di implementasi Fase 1** (lebih sederhana dari usulan di atas):
+
+- Detail kelas (`join_code`, `section`, `subject`) disimpan langsung di tabel `spaces`, tanpa tabel `courses`.
+- Detail tugas (`due_at`, `max_points`) disimpan di tabel `items`, tanpa tabel `assignments`. Karena itu
+  `submissions` merujuk ke `item_id`.
+- `attachments` bersifat polimorfik: dipakai oleh item maupun jawaban siswa.
+- Peran anggota kelas hanya `teacher` dan `student`. Pemilik kelas dicatat di `spaces.owner_id`. Peran `curator`
+  menyusul bersama Pustaka Sekolah.
+- Peran pengguna Orang Tua bernilai `guardian` (bukan `parent`).
+- Tipe item di Fase 1: `material`, `assignment`, `file`, `link`. `quiz` dan `question` hadir di Fase 2, begitu juga
+  `scheduled_at` (jadwal terbit).
+- Notifikasi memakai tabel `notifications` bawaan Laravel.
 
 ### 3.3 Logika tombol + Baru
 
@@ -843,7 +866,7 @@ login LDAP/Active Directory, dan "Drive Saya" untuk siswa.
 
 ## 6. Roadmap
 
-Setiap fase ditutup dengan CI hijau dan Feature test untuk semua aturan baru.
+Setiap fase ditutup dengan pengecekan lokal yang hijau (SQLite dan PostgreSQL) dan Feature test untuk semua aturan baru.
 
 ### Fase 0: Fondasi & perapian
 
@@ -869,8 +892,8 @@ tanpa satu pun permintaan ke internet, dan CI hijau di PHP 8.4.
       bersama kelola pengguna.
 - Sudah diverifikasi: Pint, PHPStan, vue-tsc, lint dan format, 23 test Pest di SQLite dan PostgreSQL, build tanpa
   unduhan font, simulasi skrip pemasangan, dan uji di browser tanpa satu pun request ke luar server.
-- **CI belum terbukti hijau**, karena job GitHub Actions masih tidak mendapat runner (F2). Ini harus dibereskan di
-  pengaturan akun GitHub, bukan di kode.
+- **CI belum terbukti hijau**, karena job GitHub Actions masih tidak mendapat runner (F2). Belakangan GitHub Actions
+  dihapus sama sekali (keputusan 16).
 - Panduan [INSTALL-MACOS.md](INSTALL-MACOS.md) belum dicoba langsung di Mac mini.
 - Tambahan di luar rencana: tombol + Baru mengambang di HP (ala Google Drive), serta logo dan favicon Falcon.
 
@@ -895,6 +918,32 @@ tanpa satu pun permintaan ke internet, dan CI hijau di PHP 8.4.
 5. Seorang siswa bisa bergabung dengan kode kelas, melihat semua isi kelas di satu halaman,
    menyerahkan tugas, dan melihat nilainya.
 6. Semua aturan tujuan simpan + Baru tercakup Feature test.
+
+**Status (23 Oktober 2026): selesai, dengan catatan.**
+
+- Keenam kriteria terpenuhi. Semuanya dicoba di browser dari awal sampai akhir: guru mengunggah di Beranda, membuat
+  kelas dan topik, menyalin folder Pustaka menjadi topik, membuat tugas; siswa bergabung dengan kode, menyerahkan
+  tugas, lalu melihat nilai dan notifikasi.
+- 90 test Pest lulus di SQLite dan PostgreSQL. Aturan tujuan simpan + Baru ada di
+  `tests/Feature/Courses/CreationContextTest.php`, `tests/Feature/HomeTest.php`, dan
+  `tests/Feature/Library/LibraryTest.php`.
+- Juga sudah ada: kelola pengguna (buat akun, ganti peran, reset password, impor CSV dengan slip password yang bisa
+  dicetak), To-do, notifikasi di aplikasi, dan backup harian otomatis (`php artisan falcon:backup`, pukul 02.00).
+- **Perbaikan celah keamanan** yang ikut dikerjakan:
+    - Isi materi dari editor dibersihkan di server (Symfony HtmlSanitizer), jadi tidak bisa menyisipkan skrip.
+    - Unggahan dicek dari ekstensi **dan** isi file. HTML, SVG, dan file skrip ditolak.
+    - File hanya dibuka langsung di browser jika tipenya aman (gambar, video, audio, PDF), selalu dengan CSP
+      `sandbox` dan `nosniff`. Tipe lain selalu diunduh.
+    - Setiap ID dari browser (folder, topik, item) dicek milik ruang yang sama; Policy di setiap aksi.
+    - Batas percobaan untuk gabung kelas, unggah, dan ganti password.
+    - Halaman admin meminta password ulang. Admin tidak bisa mengubah perannya sendiri.
+    - Tautan di notifikasi hanya boleh menuju halaman di dalam Falcon (mencegah open redirect).
+    - Header keamanan di semua halaman, dengan Content Security Policy ketat di production.
+- **Digeser ke Fase 2:** unggah bertahap (_chunked upload_) untuk video besar, pencarian, halaman Sampah (data sudah
+  memakai soft delete), komentar dua arah di tugas (Fase 1 baru catatan guru saat mengembalikan), dan preview
+  dokumen Office.
+- Notifikasi dikirim lewat antrean, jadi **queue worker wajib berjalan** (LaunchDaemon `com.falconlms.queue`).
+- Panduan [INSTALL-MACOS.md](INSTALL-MACOS.md) belum dicoba langsung di Mac mini.
 
 ### Fase 2: v1 "Classroom lengkap + Canvas"
 
@@ -927,7 +976,7 @@ Akses orang tua, bank soal, mastery, analitik, topik berurutan, peer review, riw
 | Pembaruan aplikasi tanpa internet                                    | Paket rilis siap pasang + skrip pemasangan (§3.7)                                                                                                       |
 | Fitur menumpuk sampai tidak sederhana lagi                           | Terapkan prinsip §4.3 di setiap review desain                                                                                                           |
 | Data pribadi siswa (UU No. 27/2022 tentang Pelindungan Data Pribadi) | Data tetap di server sekolah. Tetap terapkan Policy akses ketat, log akses, kebijakan retensi data, dan persetujuan orang tua untuk siswa di bawah umur |
-| Toolchain pra-1.0 (`vite-plus`)                                      | Kunci versi persis dan aktifkan Dependabot npm                                                                                                          |
+| Toolchain pra-1.0 (`vite-plus`)                                      | Kunci versi persis, `npm audit` di setiap rilis                                                                                                         |
 
 ### Keputusan yang masih perlu dijawab
 
@@ -948,5 +997,6 @@ npm ci
 npm run check          # format + lint frontend
 npm run types:check    # vue-tsc
 composer test          # Pint + PHPStan + Pest
-npm run build          # butuh vendor/ (Wayfinder) dan, untuk saat ini, internet (F17)
+DB_CONNECTION=pgsql DB_DATABASE=falcon_test php artisan test   # test di PostgreSQL
+npm run build          # butuh vendor/ (Wayfinder)
 ```

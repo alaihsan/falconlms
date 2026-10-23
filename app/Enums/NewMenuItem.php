@@ -13,6 +13,13 @@ enum NewMenuItem: string
     case UploadFolder = 'upload_folder';
     case Material = 'material';
     case Assignment = 'assignment';
-    case Quiz = 'quiz';
     case Link = 'link';
+    case Topic = 'topic';
+    case FromLibrary = 'from_library';
+    case Announcement = 'announcement';
+    case AddMembers = 'add_members';
+    case Course = 'course';
+    case JoinCourse = 'join_course';
+    case User = 'user';
+    case ImportUsers = 'import_users';
 }

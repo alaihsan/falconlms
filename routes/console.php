@@ -1,8 +1,9 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+// Nightly backup of the database and uploaded files (see docs/INSTALL-MACOS.md).
+Schedule::command('falcon:backup')
+    ->dailyAt('02:00')
+    ->withoutOverlapping()
+    ->when(fn () => filled(config('falcon.backup.path')));

@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Enums\Role;
+use App\Enums\SpaceKind;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -67,5 +69,25 @@ class User extends Authenticatable
     public function hasRole(Role ...$roles): bool
     {
         return in_array($this->role, $roles, true);
+    }
+
+    /**
+     * Spaces (classes) the user is a member of, with their role in each.
+     *
+     * @return BelongsToMany<Space, $this>
+     */
+    public function spaces(): BelongsToMany
+    {
+        return $this->belongsToMany(Space::class, 'space_members')->withPivot('role')->withTimestamps();
+    }
+
+    /**
+     * Active classes the user teaches or attends.
+     *
+     * @return BelongsToMany<Space, $this>
+     */
+    public function courses(): BelongsToMany
+    {
+        return $this->spaces()->where('kind', SpaceKind::Course)->whereNull('archived_at');
     }
 }
