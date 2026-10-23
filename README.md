@@ -14,8 +14,9 @@ materi masuk ke kelas itu.
 
 - **Login** dengan username atau NIS, peran Admin, Guru, Siswa. Tidak ada registrasi mandiri dan tidak ada fitur
   lewat email, karena intranet sekolah tidak punya server email.
-- **Tombol + Baru yang paham posisi halaman.** Dari Beranda atau Pustaka Saya, materi masuk ke Pustaka Saya (folder
-  yang sedang dibuka). Dari dalam kelas, materi masuk ke kelas itu (topik yang sedang dipilih).
+- **Tombol + Baru yang paham posisi halaman**, ada di semua halaman. Dari Beranda atau Pustaka Saya, materi masuk ke
+  Pustaka Saya (folder yang sedang dibuka). Dari dalam kelas atau halaman sebuah materi, materi masuk ke kelas dan
+  topik itu. Sebelum menyimpan, lokasinya selalu ditampilkan dan bisa diubah ke folder atau kelas lain.
 - **Pustaka Saya** ala Google Drive: folder bertingkat, unggah file dan folder (juga drag & drop), materi dengan
   editor teks, tautan, dan preview gambar, video, audio, dan PDF.
 - **Kelas ala Google Classroom:** kode kelas, tab Forum, Tugas Kelas dengan Topik (urutan bisa digeser), dan Anggota.

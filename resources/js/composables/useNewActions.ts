@@ -5,7 +5,12 @@ import UserController from '@/actions/App/Http/Controllers/Admin/UserController'
 import UserImportController from '@/actions/App/Http/Controllers/Admin/UserImportController';
 import ItemController from '@/actions/App/Http/Controllers/Content/ItemController';
 import UploadController from '@/actions/App/Http/Controllers/Content/UploadController';
-import type { CreationContext, NewMenuItem, SpaceRef } from '@/types';
+import type {
+    CreationContext,
+    Destination,
+    NewMenuItem,
+    SpaceRef,
+} from '@/types';
 
 export type NewDialog =
     | 'folder'
@@ -22,6 +27,32 @@ export type NewDialog =
 const openDialog = ref<NewDialog | null>(null);
 const fileInput = shallowRef<HTMLInputElement | null>(null);
 const folderInput = shallowRef<HTMLInputElement | null>(null);
+
+// Files waiting for the user to confirm where they are saved.
+export type PendingUpload = {
+    files: File[];
+    paths: string[];
+    destination: Destination;
+};
+const pendingUpload = shallowRef<PendingUpload | null>(null);
+
+/**
+ * Ask where to save picked or dropped files before uploading them. The
+ * place the user is at is chosen already; the dialog lets them change it.
+ */
+export function confirmUpload(
+    files: File[],
+    destination: Destination,
+    paths: string[] = [],
+): void {
+    if (files.length > 0) {
+        pendingUpload.value = { files, paths, destination };
+    }
+}
+
+export function usePendingUpload() {
+    return pendingUpload;
+}
 
 // PHP accepts at most 20 files per request (max_file_uploads), so bigger
 // uploads are sent in batches that also stay under the size limit.

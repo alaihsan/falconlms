@@ -44,7 +44,7 @@ class LibraryImportController extends Controller
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => trans_choice(':count item copied as a draft.|:count items copied as drafts.', $count),
+            'message' => trans_choice(':count item copied as a draft to :place.|:count items copied as drafts to :place.', $count, ['place' => $course->name]),
         ]);
 
         return redirect()->route('courses.classwork', $course);

@@ -122,8 +122,12 @@ function submit(): void {
                 <DialogHeader>
                     <DialogTitle>Dari Pustaka Saya</DialogTitle>
                     <DialogDescription>
-                        Materi disalin ke kelas sebagai draf. Folder menjadi
-                        topik dengan nama yang sama.
+                        Materi disalin ke
+                        <span class="font-medium text-foreground">{{
+                            course.name
+                        }}</span>
+                        sebagai draf. Folder menjadi topik dengan nama yang
+                        sama.
                     </DialogDescription>
                 </DialogHeader>
 

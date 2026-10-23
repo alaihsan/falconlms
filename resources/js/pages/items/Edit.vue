@@ -1,21 +1,31 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { Paperclip, Plus, X } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import ItemController from '@/actions/App/Http/Controllers/Content/ItemController';
 import AttachmentList from '@/components/content/AttachmentList.vue';
 import RichEditor from '@/components/content/RichEditor.vue';
 import InputError from '@/components/InputError.vue';
+import DestinationPicker from '@/components/new/DestinationPicker.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import type { Attachment, ItemType, SpaceRef, Topic } from '@/types';
+import type {
+    Attachment,
+    Destination,
+    ItemType,
+    SpaceRef,
+    Topic,
+} from '@/types';
 
 const props = defineProps<{
     mode: 'create' | 'edit';
     type: ItemType;
     space: SpaceRef;
+    /** Where new content starts out (create mode only). */
+    folder?: { id: number; name: string } | null;
+    topic?: { id: number; name: string } | null;
     folderId: number | null;
     topicId: number | null;
     topics: Topic[];
@@ -29,11 +39,21 @@ const props = defineProps<{
         isPublished: boolean;
         attachments: Attachment[];
     } | null;
-    canAlsoSaveToLibrary: boolean;
     cancelUrl: string;
 }>();
 
-const isCourse = props.space.kind === 'course';
+// New content can be saved somewhere else than where "+ Baru" was pressed.
+const destination = ref<Destination>({
+    space: props.space,
+    folder: props.folder ?? null,
+    topic: props.topic ?? null,
+});
+const isCourse = computed(
+    () =>
+        (props.mode === 'create' ? destination.value.space : props.space)
+            .kind === 'course',
+);
+const isTeacher = usePage().props.auth.user?.role === 'teacher';
 const typeLabel = {
     material: 'Materi',
     assignment: 'Tugas',
@@ -50,9 +70,7 @@ const form = useForm({
     max_points:
         props.item?.maxPoints?.toString() ??
         (props.type === 'assignment' ? '100' : ''),
-    topic_id: isCourse ? props.topicId : undefined,
-    folder_id:
-        !isCourse && props.mode === 'create' ? props.folderId : undefined,
+    topic_id: props.space.kind === 'course' ? props.topicId : undefined,
     files: [] as File[],
     links: [] as string[],
     remove_attachments: [] as number[],
@@ -87,7 +105,15 @@ function submit(publish: boolean): void {
     form.publish = publish;
 
     if (props.mode === 'create') {
-        form.post(ItemController.store.url(props.space.id), {
+        const target = destination.value;
+        const inCourse = target.space.kind === 'course';
+
+        form.transform((data) => ({
+            ...data,
+            folder_id: inCourse ? undefined : (target.folder?.id ?? null),
+            topic_id: inCourse ? (target.topic?.id ?? null) : undefined,
+            also_save_to_library: inCourse && data.also_save_to_library,
+        })).post(ItemController.store.url(target.space.id), {
             forceFormData: true,
         });
     } else if (props.item) {
@@ -120,10 +146,16 @@ function submit(publish: boolean): void {
                         : `Ubah ${typeLabel.toLowerCase()}`
                 }}
             </h1>
-            <p class="text-sm text-muted-foreground">
+            <p v-if="mode === 'edit'" class="text-sm text-muted-foreground">
                 Disimpan di {{ space.name }}
             </p>
         </div>
+
+        <DestinationPicker
+            v-if="mode === 'create'"
+            v-model="destination"
+            :accepts="type === 'link' ? 'library' : 'any'"
+        />
 
         <div class="grid gap-2">
             <Label for="title">Judul</Label>
@@ -186,7 +218,7 @@ function submit(publish: boolean): void {
                 </div>
             </div>
 
-            <div v-if="isCourse" class="grid gap-2">
+            <div v-if="isCourse && mode === 'edit'" class="grid gap-2">
                 <Label for="topic">Topik</Label>
                 <select
                     id="topic"
@@ -298,7 +330,7 @@ function submit(publish: boolean): void {
             </div>
 
             <label
-                v-if="canAlsoSaveToLibrary && mode === 'create'"
+                v-if="mode === 'create' && isCourse && isTeacher"
                 class="flex items-center gap-2 text-sm"
             >
                 <input

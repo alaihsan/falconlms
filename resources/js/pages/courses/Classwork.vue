@@ -22,7 +22,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { uploadFiles } from '@/composables/useNewActions';
+import { confirmUpload } from '@/composables/useNewActions';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { classwork } from '@/routes/courses';
 import { show as itemShow } from '@/routes/items';
@@ -170,8 +170,14 @@ function deleteTopic(topic: Topic): void {
 }
 
 function dropInto(topicId: number | null, files: File[]): void {
+    const topic = props.topics.find((t) => t.id === topicId);
+
     if (props.context.space) {
-        uploadFiles(props.context.space, files, { topicId });
+        confirmUpload(files, {
+            space: props.context.space,
+            folder: null,
+            topic: topic ? { id: topic.id, name: topic.name } : null,
+        });
     }
 }
 

@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Item;
 use App\Models\Submission;
 use App\Models\User;
+use App\Support\CreationContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -19,7 +20,7 @@ use Inertia\Response;
  */
 class GradingController extends Controller
 {
-    public function index(Item $item): Response
+    public function index(Request $request, Item $item): Response
     {
         Gate::authorize('update', $item);
         $course = $item->space;
@@ -30,6 +31,7 @@ class GradingController extends Controller
 
         return Inertia::render('items/Submissions', [
             'item' => ['id' => $item->id, 'title' => $item->title, 'maxPoints' => $item->max_points, 'dueAt' => $item->due_at?->toIso8601String()],
+            'context' => CreationContext::forItem($item, $request->user())->toArray(),
             'breadcrumbs' => [
                 ['title' => $course->name, 'href' => route('courses.show', $course)],
                 ['title' => $item->title, 'href' => route('items.show', $item)],

@@ -6,6 +6,7 @@ use App\Enums\ItemType;
 use App\Models\Folder;
 use App\Models\Item;
 use App\Models\Space;
+use App\Models\Topic;
 
 /**
  * Shapes models into the small arrays the pages receive, so only fields
@@ -43,6 +44,14 @@ final class Payload
                 ? $item->attachments->first()?->toPayload()
                 : null,
         ];
+    }
+
+    /**
+     * Where something was saved, e.g. "Pustaka Saya › Bab 1", for messages.
+     */
+    public static function place(Space $space, ?Folder $folder = null, ?Topic $topic = null): string
+    {
+        return implode(' › ', array_filter([$space->displayName(), $folder?->name, $topic?->name]));
     }
 
     /**

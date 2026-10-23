@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserImportController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\Content\DestinationController;
 use App\Http\Controllers\Content\FolderController;
 use App\Http\Controllers\Content\ItemController;
 use App\Http\Controllers\Content\LibraryController;
@@ -40,6 +41,7 @@ Route::middleware('auth')->group(function () {
 
         // Library (Pustaka Saya)
         Route::get('pustaka/{folder?}', [LibraryController::class, 'show'])->name('library.show');
+        Route::get('tujuan-simpan', DestinationController::class)->name('destinations');
         Route::post('ruang/{space}/folder', [FolderController::class, 'store'])->name('folders.store');
         Route::patch('folder/{folder}', [FolderController::class, 'update'])->name('folders.update');
         Route::delete('folder/{folder}', [FolderController::class, 'destroy'])->name('folders.destroy');

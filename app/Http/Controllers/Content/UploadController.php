@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Folder;
 use App\Models\Space;
 use App\Models\Topic;
+use App\Support\Payload;
 use App\Support\Uploads;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,20 +37,16 @@ class UploadController extends Controller
                 : ['prohibited'],
         ]);
 
-        $count = $storeUploads->handle(
-            $space,
-            isset($data['folder_id']) ? Folder::query()->findOrFail((int) $data['folder_id']) : null,
-            isset($data['topic_id']) ? Topic::query()->findOrFail((int) $data['topic_id']) : null,
-            array_values($data['files']),
-            array_values($data['paths'] ?? []),
-            $request->user(),
-        );
+        $folder = isset($data['folder_id']) ? Folder::query()->findOrFail((int) $data['folder_id']) : null;
+        $topic = isset($data['topic_id']) ? Topic::query()->findOrFail((int) $data['topic_id']) : null;
+        $count = $storeUploads->handle($space, $folder, $topic, array_values($data['files']), array_values($data['paths'] ?? []), $request->user());
+        $place = ['place' => Payload::place($space, $folder, $topic)];
 
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => $space->isCourse()
-                ? trans_choice(':count file saved as a draft material.|:count files saved as draft materials.', $count)
-                : trans_choice(':count file uploaded.|:count files uploaded.', $count),
+                ? trans_choice(':count file saved as a draft material in :place.|:count files saved as draft materials in :place.', $count, $place)
+                : trans_choice(':count file uploaded to :place.|:count files uploaded to :place.', $count, $place),
         ]);
 
         return back();

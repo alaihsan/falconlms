@@ -30,6 +30,22 @@ export type CreationContext = {
     canAlsoSaveToLibrary: boolean;
 };
 
+/** A place new content is saved to: a library folder or a class topic. */
+export type Destination = {
+    space: SpaceRef;
+    folder: { id: number; name: string } | null;
+    topic: { id: number; name: string } | null;
+};
+
+/** Places the user may save to, for the location picker. */
+export type DestinationOptions = {
+    libraries: {
+        space: SpaceRef;
+        folders: { id: number; name: string; label: string; depth: number }[];
+    }[];
+    courses: { space: SpaceRef; topics: { id: number; name: string }[] }[];
+};
+
 export type ItemType = 'material' | 'assignment' | 'file' | 'link';
 
 export type AttachmentPreview = 'image' | 'video' | 'audio' | 'pdf' | null;

@@ -23,24 +23,25 @@ kesederhanaan Classroom.
 
 ### Keputusan yang sudah disepakati
 
-| #   | Topik                 | Keputusan                                                                                                                                                                             |
-| --- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Lingkup               | Audit + rancangan dulu, lalu implementasi menunggu persetujuan                                                                                                                        |
-| 2   | Pustaka               | Dua lapis: **Pustaka Saya** (pribadi guru) dan **Pustaka Sekolah** (bersama). Keduanya memakai folder ala Drive                                                                       |
-| 3   | Peran                 | Admin, Guru, Siswa sejak awal. **Orang Tua** di tahap berikutnya                                                                                                                      |
-| 4   | + Baru di dalam kelas | Tersimpan di kelas, dengan opsi centang **"Simpan juga ke Pustaka Saya"**                                                                                                             |
-| 5   | Bahasa                | Bahasa Indonesia, disiapkan i18n supaya bisa ditambah bahasa lain                                                                                                                     |
-| 6   | Jaringan              | **Murni intranet**: server di sekolah, tanpa ketergantungan ke internet saat aplikasi berjalan                                                                                        |
-| 7   | Isi kelas             | **Persis Google Classroom**: tab Forum, Tugas Kelas, Anggota, Nilai. Materi dikelompokkan dengan **Topik** (satu tingkat), bukan folder                                               |
-| 8   | Jumlah sekolah        | Satu sekolah per instalasi (konsekuensi dari keputusan 6)                                                                                                                             |
-| 9   | Drive siswa           | Siswa **tidak** punya "Drive Saya". Siswa hanya melampirkan file saat menyerahkan tugas                                                                                               |
-| 10  | Akun                  | Dikelola langsung di Falcon (impor CSV/Excel, login username/NIS). **Tanpa LDAP/Active Directory** ([§3.6](#36-rekomendasi-pustaka-teknis-semua-bisa-berjalan-offline))               |
-| 11  | Database              | **PostgreSQL** sebagai satu-satunya database resmi ([§3.7](#37-deployment-intranet))                                                                                                  |
-| 12  | Email                 | **Tidak ada server email.** Semua notifikasi lewat aplikasi, reset password oleh admin/wali kelas                                                                                     |
-| 13  | Pola ujian            | **Ulangan harian** per mata pelajaran di waktu yang tidak tentu (skala satu kelas). **PTS dan PAS** serentak sampai **450 siswa** ([§3.8](#38-ujian-ulangan-harian-pts-dan-pas))      |
-| 14  | Server                | **Mac mini M2, RAM 8 GB, SSD 256 GB, dengan UPS**, berjalan langsung di macOS ([§3.7](#37-deployment-intranet))                                                                       |
-| 15  | Penyimpanan & daya    | File materi di **SSD eksternal** karena SSD internal hanya 256 GB. **FileVault aktif**, karena ada UPS ([§3.7](#37-deployment-intranet))                                              |
-| 16  | CI                    | **Tanpa GitHub Actions dan Dependabot** supaya tidak ada biaya. Pengecekan dijalankan di komputer developer, dan `scripts/build-release.sh` menolak membuat paket jika ada yang gagal |
+| #   | Topik                 | Keputusan                                                                                                                                                                                                             |
+| --- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Lingkup               | Audit + rancangan dulu, lalu implementasi menunggu persetujuan                                                                                                                                                        |
+| 2   | Pustaka               | Dua lapis: **Pustaka Saya** (pribadi guru) dan **Pustaka Sekolah** (bersama). Keduanya memakai folder ala Drive                                                                                                       |
+| 3   | Peran                 | Admin, Guru, Siswa sejak awal. **Orang Tua** di tahap berikutnya                                                                                                                                                      |
+| 4   | + Baru di dalam kelas | Tersimpan di kelas, dengan opsi centang **"Simpan juga ke Pustaka Saya"**                                                                                                                                             |
+| 5   | Bahasa                | Bahasa Indonesia, disiapkan i18n supaya bisa ditambah bahasa lain                                                                                                                                                     |
+| 6   | Jaringan              | **Murni intranet**: server di sekolah, tanpa ketergantungan ke internet saat aplikasi berjalan                                                                                                                        |
+| 7   | Isi kelas             | **Persis Google Classroom**: tab Forum, Tugas Kelas, Anggota, Nilai. Materi dikelompokkan dengan **Topik** (satu tingkat), bukan folder                                                                               |
+| 8   | Jumlah sekolah        | Satu sekolah per instalasi (konsekuensi dari keputusan 6)                                                                                                                                                             |
+| 9   | Drive siswa           | Siswa **tidak** punya "Drive Saya". Siswa hanya melampirkan file saat menyerahkan tugas                                                                                                                               |
+| 10  | Akun                  | Dikelola langsung di Falcon (impor CSV/Excel, login username/NIS). **Tanpa LDAP/Active Directory** ([§3.6](#36-rekomendasi-pustaka-teknis-semua-bisa-berjalan-offline))                                               |
+| 11  | Database              | **PostgreSQL** sebagai satu-satunya database resmi ([§3.7](#37-deployment-intranet))                                                                                                                                  |
+| 12  | Email                 | **Tidak ada server email.** Semua notifikasi lewat aplikasi, reset password oleh admin/wali kelas                                                                                                                     |
+| 13  | Pola ujian            | **Ulangan harian** per mata pelajaran di waktu yang tidak tentu (skala satu kelas). **PTS dan PAS** serentak sampai **450 siswa** ([§3.8](#38-ujian-ulangan-harian-pts-dan-pas))                                      |
+| 14  | Server                | **Mac mini M2, RAM 8 GB, SSD 256 GB, dengan UPS**, berjalan langsung di macOS ([§3.7](#37-deployment-intranet))                                                                                                       |
+| 15  | Penyimpanan & daya    | File materi di **SSD eksternal** karena SSD internal hanya 256 GB. **FileVault aktif**, karena ada UPS ([§3.7](#37-deployment-intranet))                                                                              |
+| 16  | CI                    | **Tanpa GitHub Actions dan Dependabot** supaya tidak ada biaya. Pengecekan dijalankan di komputer developer, dan `scripts/build-release.sh` menolak membuat paket jika ada yang gagal                                 |
+| 17  | Tombol + Baru         | Lebih besar, **ada di semua halaman**, tujuan mengikuti halaman, dan **selalu mengonfirmasi lokasi simpan** (bisa diubah ke folder Pustaka atau kelas/topik lain) sebelum menyimpan ([§3.3](#33-logika-tombol--baru)) |
 
 ---
 
@@ -515,6 +516,12 @@ Alur di server untuk `POST /spaces/{space}/items`:
 4. Redirect kembali ke halaman yang sama dan tampilkan toast "Tersimpan di _X IPA 1 › Bab 1 - Aljabar_".
    Pengguna selalu diberi tahu **di mana** materinya tersimpan.
 
+**Konfirmasi lokasi (keputusan 17).** Tombol + Baru ada di semua halaman. Halaman yang tidak punya tempat sendiri
+(To-do, Notifikasi) memakai tujuan Beranda; halaman sebuah materi memakai folder atau topik materi itu. Setiap aksi
+yang menyimpan konten menampilkan **"Disimpan di …"** yang sudah terisi sesuai halaman, dengan tombol **Ubah** untuk
+memilih folder Pustaka Saya atau kelas/topik lain yang diajar (daftar dari `GET /tujuan-simpan`). Unggahan, termasuk
+drag & drop, selalu lewat dialog konfirmasi ini dulu. Server tetap mengecek Policy untuk tujuan yang dipilih.
+
 **Drag & drop:**
 
 - Di Pustaka, file yang diseret menjadi file lepas di folder yang sedang dibuka.
@@ -943,6 +950,8 @@ tanpa satu pun permintaan ke internet, dan CI hijau di PHP 8.4.
   memakai soft delete), komentar dua arah di tugas (Fase 1 baru catatan guru saat mengembalikan), dan preview
   dokumen Office.
 - Notifikasi dikirim lewat antrean, jadi **queue worker wajib berjalan** (LaunchDaemon `com.falconlms.queue`).
+- Tambahan setelah Fase 1 (keputusan 17): tombol + Baru lebih besar, ada di semua halaman, dan selalu mengonfirmasi
+  lokasi simpan yang bisa diubah.
 - Panduan [INSTALL-MACOS.md](INSTALL-MACOS.md) belum dicoba langsung di Mac mini.
 
 ### Fase 2: v1 "Classroom lengkap + Canvas"

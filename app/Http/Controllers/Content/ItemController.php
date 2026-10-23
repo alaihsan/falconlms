@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Content;
 
 use App\Actions\Content\SaveItem;
 use App\Enums\ItemType;
-use App\Enums\Role;
 use App\Enums\SubmissionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Content\SaveItemRequest;
@@ -14,6 +13,7 @@ use App\Models\Space;
 use App\Models\Submission;
 use App\Models\Topic;
 use App\Models\User;
+use App\Support\CreationContext;
 use App\Support\Payload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,15 +39,20 @@ class ItemController extends Controller
             'topic' => $space->isCourse() ? ['nullable', 'integer', Rule::exists('topics', 'id')->where('space_id', $space->id)] : ['prohibited'],
         ]);
 
+        $folder = isset($data['folder']) ? Folder::query()->findOrFail((int) $data['folder']) : null;
+        $topic = isset($data['topic']) ? Topic::query()->findOrFail((int) $data['topic']) : null;
+
         return Inertia::render('items/Edit', [
             'mode' => 'create',
             'type' => $data['type'],
             'space' => $this->spacePayload($space),
-            'folderId' => isset($data['folder']) ? (int) $data['folder'] : null,
-            'topicId' => isset($data['topic']) ? (int) $data['topic'] : null,
+            'folder' => $folder ? Payload::folder($folder) : null,
+            'topic' => $topic ? ['id' => $topic->id, 'name' => $topic->name] : null,
+            'folderId' => $folder?->id,
+            'topicId' => $topic?->id,
             'topics' => $this->topics($space),
             'item' => null,
-            'canAlsoSaveToLibrary' => $space->isCourse() && $request->user()->hasRole(Role::Teacher),
+            'context' => CreationContext::forPlace($space, $request->user(), $folder, $topic)->toArray(),
             'cancelUrl' => $space->isCourse()
                 ? route('courses.classwork', $space)
                 : route('library.show', $data['folder'] ?? null),
@@ -59,16 +64,17 @@ class ItemController extends Controller
         Gate::authorize('manage', $space);
 
         $data = $request->validated();
-        $item = $saveItem->create(
-            $space,
-            $request->user(),
-            ItemType::from($data['type']),
-            $data,
-            isset($data['folder_id']) ? Folder::query()->findOrFail((int) $data['folder_id']) : null,
-            isset($data['topic_id']) ? Topic::query()->findOrFail((int) $data['topic_id']) : null,
-        );
+        $folder = isset($data['folder_id']) ? Folder::query()->findOrFail((int) $data['folder_id']) : null;
+        $topic = isset($data['topic_id']) ? Topic::query()->findOrFail((int) $data['topic_id']) : null;
+        $item = $saveItem->create($space, $request->user(), ItemType::from($data['type']), $data, $folder, $topic);
+        $place = Payload::place($space, $folder, $topic);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => $item->isPublished() || $space->isLibrary() ? __('Saved.') : __('Saved as a draft.')]);
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $item->isPublished() || $space->isLibrary()
+                ? __('Saved to :place.', ['place' => $place])
+                : __('Saved as a draft in :place.', ['place' => $place]),
+        ]);
 
         return $this->redirectToContainer($item);
     }
@@ -95,6 +101,7 @@ class ItemController extends Controller
             'space' => $this->spacePayload($space),
             'breadcrumbs' => $this->breadcrumbs($item),
             'can' => ['update' => $canManage, 'submit' => $canSubmit],
+            'context' => CreationContext::forItem($item, $user)->toArray(),
         ];
 
         if ($canSubmit) {
@@ -141,8 +148,8 @@ class ItemController extends Controller
                 'isPublished' => $item->isPublished(),
                 'attachments' => $item->attachments->map->toPayload()->values(),
             ],
-            'canAlsoSaveToLibrary' => false,
             'cancelUrl' => route('items.show', $item),
+            'context' => CreationContext::forItem($item, $request->user())->toArray(),
         ]);
     }
 

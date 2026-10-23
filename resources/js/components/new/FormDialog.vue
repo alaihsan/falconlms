@@ -79,6 +79,9 @@ function submit(): void {
                     }}</DialogDescription>
                 </DialogHeader>
 
+                <!-- Where the result is saved (a location picker). -->
+                <slot />
+
                 <div
                     v-for="(field, index) in fields"
                     :key="field.name"

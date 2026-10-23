@@ -7,6 +7,7 @@ use App\Actions\Content\DeleteFolder;
 use App\Http\Controllers\Controller;
 use App\Models\Folder;
 use App\Models\Space;
+use App\Support\Payload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -28,7 +29,7 @@ class FolderController extends Controller
         $parent = isset($data['parent_id']) ? Folder::query()->findOrFail((int) $data['parent_id']) : null;
         $createFolder->handle($space, $parent, $data['name'], $request->user());
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Folder created.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Folder created in :place.', ['place' => Payload::place($space, $parent)])]);
 
         return back();
     }

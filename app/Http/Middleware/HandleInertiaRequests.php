@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Space;
+use App\Support\CreationContext;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -61,6 +62,8 @@ class HandleInertiaRequests extends Middleware
                     ->values(),
                 'unreadNotifications' => $user->unreadNotifications()->count(),
             ] : null,
+            // Pages that know a more specific place send their own `context`.
+            'context' => fn () => $user ? CreationContext::forHome($user)->toArray() : null,
             'uploads' => [
                 'maxBytes' => config('falcon.uploads.max_kilobytes') * 1024,
                 'maxFiles' => config('falcon.uploads.max_files'),

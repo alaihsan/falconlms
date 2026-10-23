@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
-import { computed, onMounted, useTemplateRef } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import FolderController from '@/actions/App/Http/Controllers/Content/FolderController';
 import ItemController from '@/actions/App/Http/Controllers/Content/ItemController';
@@ -9,21 +9,32 @@ import JoinCourseController from '@/actions/App/Http/Controllers/Courses/JoinCou
 import MemberController from '@/actions/App/Http/Controllers/Courses/MemberController';
 import PostController from '@/actions/App/Http/Controllers/Courses/PostController';
 import TopicController from '@/actions/App/Http/Controllers/Courses/TopicController';
+import DestinationPicker from '@/components/new/DestinationPicker.vue';
 import FormDialog from '@/components/new/FormDialog.vue';
 import LibraryImportDialog from '@/components/new/LibraryImportDialog.vue';
 import TemporaryPasswordDialog from '@/components/new/TemporaryPasswordDialog.vue';
-import { uploadFiles, useNewActions } from '@/composables/useNewActions';
+import UploadDialog from '@/components/new/UploadDialog.vue';
+import { destinationFromContext } from '@/composables/useDestinations';
+import { confirmUpload, useNewActions } from '@/composables/useNewActions';
 import type { NewDialog } from '@/composables/useNewActions';
-import type { CreationContext } from '@/types';
+import type { CreationContext, Destination } from '@/types';
 
 const page = usePage<{
     context?: CreationContext;
     roles?: { value: string; label: string }[];
 }>();
 const context = computed(() => page.props.context ?? null);
-const space = computed(() => context.value?.space ?? null);
 
 const { openDialog, close, registerInputs, run } = useNewActions();
+
+// Every dialog starts at the place the user is at; the picker can change it.
+const destination = ref<Destination | null>(null);
+
+watch(openDialog, (name) => {
+    if (name) {
+        destination.value = destinationFromContext(context.value);
+    }
+});
 
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 const folderInput = useTemplateRef<HTMLInputElement>('folderInput');
@@ -53,15 +64,12 @@ function setOpen(open: boolean) {
 function onPicked(event: Event, withPaths: boolean): void {
     const input = event.target as HTMLInputElement;
     const files = Array.from(input.files ?? []);
+    const target = destinationFromContext(context.value);
 
-    if (space.value) {
-        uploadFiles(
-            space.value,
+    if (target) {
+        confirmUpload(
             files,
-            {
-                folderId: context.value?.folder?.id,
-                topicId: context.value?.topic?.id,
-            },
+            target,
             withPaths ? files.map((file) => file.webkitRelativePath) : [],
         );
     }
@@ -89,16 +97,18 @@ function onPicked(event: Event, withPaths: boolean): void {
         @change="onPicked($event, true)"
     />
 
-    <template v-if="space">
+    <template v-if="destination">
         <FormDialog
             :open="isOpen('folder')"
             title="Folder baru"
             :fields="[{ name: 'name', label: 'Nama folder', required: true }]"
-            :action="FolderController.store.url(space.id)"
-            :extra="{ parent_id: context?.folder?.id ?? null }"
+            :action="FolderController.store.url(destination.space.id)"
+            :extra="{ parent_id: destination.folder?.id ?? null }"
             submit-label="Buat"
             @update:open="setOpen"
-        />
+        >
+            <DestinationPicker v-model="destination" accepts="library" />
+        </FormDialog>
         <FormDialog
             :open="isOpen('link')"
             title="Tautan baru"
@@ -113,11 +123,13 @@ function onPicked(event: Event, withPaths: boolean): void {
                     required: true,
                 },
             ]"
-            :action="ItemController.store.url(space.id)"
-            :extra="{ type: 'link', folder_id: context?.folder?.id ?? null }"
+            :action="ItemController.store.url(destination.space.id)"
+            :extra="{ type: 'link', folder_id: destination.folder?.id ?? null }"
             submit-label="Simpan"
             @update:open="setOpen"
-        />
+        >
+            <DestinationPicker v-model="destination" accepts="library" />
+        </FormDialog>
         <FormDialog
             :open="isOpen('topic')"
             title="Topik baru"
@@ -129,10 +141,17 @@ function onPicked(event: Event, withPaths: boolean): void {
                     required: true,
                 },
             ]"
-            :action="TopicController.store.url(space.id)"
+            :action="TopicController.store.url(destination.space.id)"
             submit-label="Buat"
             @update:open="setOpen"
-        />
+        >
+            <DestinationPicker
+                v-model="destination"
+                accepts="course"
+                spaces-only
+                title="Di kelas"
+            />
+        </FormDialog>
         <FormDialog
             :open="isOpen('announcement')"
             title="Pengumuman"
@@ -145,10 +164,17 @@ function onPicked(event: Event, withPaths: boolean): void {
                     required: true,
                 },
             ]"
-            :action="PostController.store.url(space.id)"
+            :action="PostController.store.url(destination.space.id)"
             submit-label="Umumkan"
             @update:open="setOpen"
-        />
+        >
+            <DestinationPicker
+                v-model="destination"
+                accepts="course"
+                spaces-only
+                title="Di kelas"
+            />
+        </FormDialog>
         <FormDialog
             :open="isOpen('add_members')"
             title="Tambah anggota"
@@ -162,15 +188,17 @@ function onPicked(event: Event, withPaths: boolean): void {
                     required: true,
                 },
             ]"
-            :action="MemberController.store.url(space.id)"
+            :action="MemberController.store.url(destination.space.id)"
             submit-label="Tambahkan"
             @update:open="setOpen"
-        />
+        >
+            <DestinationPicker v-model="destination" fixed title="Ke kelas" />
+        </FormDialog>
         <LibraryImportDialog
-            v-if="space.kind === 'course'"
+            v-if="destination.space.kind === 'course'"
             :open="isOpen('from_library')"
-            :course="space"
-            :topic-id="context?.topic?.id ?? null"
+            :course="destination.space"
+            :topic-id="destination.topic?.id ?? null"
             @update:open="setOpen"
         />
     </template>
@@ -241,5 +269,6 @@ function onPicked(event: Event, withPaths: boolean): void {
         @update:open="setOpen"
     />
 
+    <UploadDialog />
     <TemporaryPasswordDialog />
 </template>

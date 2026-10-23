@@ -21,7 +21,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { uploadFiles } from '@/composables/useNewActions';
+import { confirmUpload } from '@/composables/useNewActions';
 import { formatDate } from '@/lib/format';
 import { show as itemShow } from '@/routes/items';
 import { show as library } from '@/routes/library';
@@ -56,7 +56,13 @@ const renaming = ref<FolderSummary | null>(null);
 
 function onDrop(files: File[]): void {
     if (props.context.space) {
-        uploadFiles(props.context.space, files, { folderId: props.folder?.id });
+        confirmUpload(files, {
+            space: props.context.space,
+            folder: props.folder
+                ? { id: props.folder.id, name: props.folder.name }
+                : null,
+            topic: null,
+        });
     }
 }
 

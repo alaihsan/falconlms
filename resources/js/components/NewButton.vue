@@ -114,17 +114,22 @@ const collapsed = computed(
                 :data-test="floating ? 'new-button-floating' : 'new-button'"
                 :class="
                     cn(
-                        'flex items-center gap-3 rounded-2xl bg-background font-medium shadow-md ring-1 ring-sidebar-border transition-shadow outline-none hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:shadow-lg',
+                        'flex items-center gap-3 rounded-2xl bg-background font-semibold shadow-md ring-1 ring-sidebar-border transition-shadow outline-none hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:shadow-lg',
                         collapsed
-                            ? 'size-8 justify-center rounded-lg'
-                            : 'h-14 w-fit px-5 pr-6',
+                            ? 'size-10 justify-center rounded-xl'
+                            : 'h-16 min-w-40 px-6 pr-8 text-base',
                         floating &&
                             'fixed right-5 bottom-5 z-20 shadow-lg md:hidden',
                     )
                 "
             >
                 <Plus
-                    :class="cn('text-primary', collapsed ? 'size-5' : 'size-6')"
+                    :class="
+                        cn(
+                            'text-primary',
+                            collapsed ? 'size-6' : 'size-8 stroke-[2.5]',
+                        )
+                    "
                 />
                 <span v-if="!collapsed">Baru</span>
                 <span v-else class="sr-only">Baru</span>
