@@ -8,10 +8,10 @@ use App\Http\Requests\Admin\ImportStudentsRequest;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\User;
+use App\Services\StudentCsvImportService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -139,117 +139,26 @@ class UserController extends Controller
     /**
      * Import students from uploaded CSV file.
      */
-    public function importCsv(ImportStudentsRequest $request): RedirectResponse
+    public function importCsv(ImportStudentsRequest $request, StudentCsvImportService $importService): RedirectResponse
     {
         $file = $request->file('file');
 
-        if (! $file || ! $file->isValid()) {
+        if (! $file) {
             return redirect()->route('admin.users.index')
-                ->with('error', 'Berkas CSV tidak valid.');
+                ->with('error', 'Berkas CSV tidak ditemukan.');
         }
 
-        $handle = fopen($file->getRealPath(), 'r');
-
-        if ($handle === false) {
-            return redirect()->route('admin.users.index')
-                ->with('error', 'Gagal membuka berkas CSV.');
-        }
-
-        $imported = 0;
-        $skipped = 0;
-        $rowNumber = 0;
-        $firstRow = true;
-
-        DB::beginTransaction();
-
-        try {
-            while (($row = fgetcsv($handle, 1000, ',')) !== false) {
-                $rowNumber++;
-
-                // Skip completely empty rows
-                if (empty(array_filter($row, static fn (?string $v): bool => $v !== null && trim($v) !== ''))) {
-                    continue;
-                }
-
-                // Header row check
-                if ($firstRow) {
-                    $firstRow = false;
-                    $firstCol = strtolower(trim($row[0] ?? ''));
-                    if (in_array($firstCol, ['nama', 'name', 'nama lengkap'], true)) {
-                        continue;
-                    }
-                }
-
-                $name = trim($row[0] ?? '');
-                $email = strtolower(trim($row[1] ?? ''));
-                $username = isset($row[2]) ? trim($row[2]) : null;
-                $password = isset($row[3]) && trim($row[3]) !== '' ? trim($row[3]) : 'siswa123';
-
-                if ($name === '' || $email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $skipped++;
-
-                    continue;
-                }
-
-                // Check for duplicate email or username
-                $exists = User::query()
-                    ->where('email', $email)
-                    ->when($username, fn (Builder $q) => $q->orWhere('username', $username))
-                    ->exists();
-
-                if ($exists) {
-                    $skipped++;
-
-                    continue;
-                }
-
-                User::create([
-                    'name' => $name,
-                    'email' => $email,
-                    'username' => $username ?: null,
-                    'role' => UserRole::Siswa,
-                    'password' => Hash::make($password),
-                    'must_change_password' => true,
-                ]);
-
-                $imported++;
-            }
-
-            fclose($handle);
-            DB::commit();
-        } catch (\Throwable $e) {
-            fclose($handle);
-            DB::rollBack();
-
-            return redirect()->route('admin.users.index')
-                ->with('error', 'Terjadi kesalahan saat mengimpor data: '.$e->getMessage());
-        }
-
-        $message = "Berhasil mengimpor {$imported} siswa.";
-        if ($skipped > 0) {
-            $message .= " {$skipped} baris dilewati karena duplikasi atau data tidak lengkap.";
-        }
+        $result = $importService->import($file);
 
         return redirect()->route('admin.users.index')
-            ->with('success', $message);
+            ->with($result['success'] ? 'success' : 'error', $result['message']);
     }
 
     /**
      * Download template CSV file for student import.
      */
-    public function downloadTemplate(): StreamedResponse
+    public function downloadTemplate(StudentCsvImportService $importService): StreamedResponse
     {
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="template_siswa.csv"',
-        ];
-
-        return response()->stream(function (): void {
-            $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['nama', 'email', 'username', 'password']);
-            fputcsv($handle, ['Ahmad Fauzi', 'fauzi@falcon.sch.id', 'siswa01', 'siswa123']);
-            fputcsv($handle, ['Siti Nurhaliza', 'siti@falcon.sch.id', 'siswa02', 'siswa123']);
-            fclose($handle);
-        }, 200, $headers);
+        return $importService->downloadTemplate();
     }
 }

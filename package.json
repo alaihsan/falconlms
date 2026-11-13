@@ -6,6 +6,7 @@
         "build": "vp build",
         "build:ssr": "vp build && vp build --ssr",
         "dev": "vp dev",
+        "h5p:sync": "node -e \"import('node:fs').then((fs) => fs.cpSync('node_modules/h5p-standalone/dist', 'resources/h5p-standalone', { recursive: true }))\"",
         "check": "vp check",
         "check:fix": "vp check --fix",
         "types:check": "vue-tsc --noEmit"
@@ -17,6 +18,7 @@
         "@vitejs/plugin-vue": "^6.0.0",
         "clsx": "^2.1.1",
         "concurrently": "^10.0.3",
+        "h5p-standalone": "^3.8.2",
         "laravel-vite-plugin": "^3.1",
         "tailwind-merge": "^3.2.0",
         "tailwindcss": "^4.1.1",

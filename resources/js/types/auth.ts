@@ -30,3 +30,34 @@ export type SharedProps = {
     flash: FlashMessages;
     [key: string]: unknown;
 };
+
+export type UserItem = {
+    id: number;
+    name: string;
+    email: string;
+    username: string | null;
+    role: UserRole;
+    role_label: string;
+    must_change_password: boolean;
+    created_at: string;
+};
+
+export type PaginationLink = {
+    url: string | null;
+    label: string;
+    active: boolean;
+};
+
+export type PaginatedUsers = {
+    data: UserItem[];
+    links: PaginationLink[];
+    total: number;
+    current_page: number;
+    last_page: number;
+};
+
+export type RoleOption = {
+    value: string;
+    label: string;
+};
+

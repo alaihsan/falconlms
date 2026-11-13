@@ -172,14 +172,14 @@ function fillDemo(loginVal: string, passVal: string): void {
                     <button
                         type="button"
                         class="rounded-lg border border-slate-200 bg-slate-100 p-2 text-center text-[11px] font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700"
-                        @click="fillDemo('guru@falcon.sch.id', 'guru123')"
+                        @click="fillDemo('budi@falcon.sch.id', 'guru123')"
                     >
                         Guru
                     </button>
                     <button
                         type="button"
                         class="rounded-lg border border-slate-200 bg-slate-100 p-2 text-center text-[11px] font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700"
-                        @click="fillDemo('siswa@falcon.sch.id', 'siswa123')"
+                        @click="fillDemo('fauzi@falcon.sch.id', 'siswa123')"
                     >
                         Siswa
                     </button>
