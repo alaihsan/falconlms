@@ -117,6 +117,21 @@ test('items cannot be shared with students', function () {
     $response->assertSessionHasErrors('teacher_ids.0');
 });
 
+test('items cannot be shared with a deleted teacher', function () {
+    $guru = User::factory()->guru()->create();
+    $deletedTeacher = User::factory()->guru()->create();
+    $deletedTeacher->delete();
+    $item = LearningItem::factory()->create(['user_id' => $guru->id]);
+
+    $response = $this->actingAs($guru)->put(route('library.share', $item), [
+        'class_ids' => [],
+        'teacher_ids' => [$deletedTeacher->id],
+    ]);
+
+    $response->assertSessionHasErrors(['teacher_ids.0' => 'Konten hanya dapat dibagikan kepada guru lain.']);
+    expect($item->sharedWith()->count())->toBe(0);
+});
+
 test('shared view lists items from colleagues but not unshared ones', function () {
     $guru = User::factory()->guru()->create();
     $shared = LearningItem::factory()->hasAttached($guru, relationship: 'sharedWith')->create();

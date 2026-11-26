@@ -162,7 +162,7 @@ function submit(): void {
                         v-model="form.password"
                         type="password"
                         required
-                        placeholder="Minimal 6 karakter"
+                        placeholder="Minimal 8 karakter"
                         class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 focus:outline-hidden"
                     />
                     <p
@@ -204,9 +204,7 @@ function submit(): void {
                         class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-indigo-700 disabled:opacity-60"
                     >
                         {{
-                            form.processing
-                                ? 'Menyimpan...'
-                                : 'Simpan Pengguna'
+                            form.processing ? 'Menyimpan...' : 'Simpan Pengguna'
                         }}
                     </button>
                 </div>
@@ -214,4 +212,3 @@ function submit(): void {
         </div>
     </div>
 </template>
-

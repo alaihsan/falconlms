@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Inertia\Testing\AssertableInertia;
 
 test('login screen can be rendered', function () {
     $response = $this->get(route('login'));
@@ -114,4 +115,39 @@ test('users can log out', function () {
 
     $this->assertGuest();
     $response->assertRedirect(route('login'));
+});
+
+test('login page does not offer demo accounts outside a local machine', function () {
+    $response = $this->get(route('login'));
+
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('Auth/Login')
+        ->where('demoAccounts', []));
+});
+
+test('login page offers the seeded demo accounts on a local machine', function () {
+    app()->detectEnvironment(fn (): string => 'local');
+
+    $response = $this->get(route('login'));
+
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('Auth/Login')
+        ->has('demoAccounts', 3)
+        ->where('demoAccounts.0.login', 'admin@falcon.sch.id'));
+});
+
+test('a deleted user cannot sign in', function () {
+    $user = User::factory()->guru()->create([
+        'email' => 'terhapus@falcon.sch.id',
+        'password' => 'secret123',
+    ]);
+    $user->delete();
+
+    $response = $this->post(route('login.store'), [
+        'login' => 'terhapus@falcon.sch.id',
+        'password' => 'secret123',
+    ]);
+
+    $response->assertSessionHasErrors('login');
+    $this->assertGuest();
 });

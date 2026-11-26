@@ -109,6 +109,16 @@ class TaskController extends Controller
             abort(Response::HTTP_FORBIDDEN, 'Anda belum terdaftar di kelas untuk tugas ini.');
         }
 
+        $isAlreadyGraded = AssignmentSubmission::query()
+            ->where('learning_item_id', $learningItem->id)
+            ->where('siswa_id', $user->id)
+            ->whereNotNull('score')
+            ->exists();
+
+        if ($isAlreadyGraded) {
+            return back()->with('error', "Jawaban untuk \"{$learningItem->title}\" sudah dinilai sehingga tidak dapat diubah lagi.");
+        }
+
         AssignmentSubmission::updateOrCreate(
             [
                 'learning_item_id' => $learningItem->id,

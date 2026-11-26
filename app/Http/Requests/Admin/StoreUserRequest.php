@@ -29,7 +29,7 @@ class StoreUserRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'username' => ['nullable', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
             'role' => ['required', new Enum(UserRole::class)],
-            'password' => ['required', 'string', Password::min(6)],
+            'password' => ['required', 'string', Password::defaults()],
             'must_change_password' => ['nullable', 'boolean'],
         ];
     }
@@ -50,7 +50,7 @@ class StoreUserRequest extends FormRequest
             'username.alpha_dash' => 'Username hanya boleh berisi huruf, angka, tanda strip, dan garis bawah.',
             'role.required' => 'Peran pengguna wajib dipilih.',
             'password.required' => 'Kata sandi wajib diisi.',
-            'password.min' => 'Kata sandi minimal 6 karakter.',
+            'password.min' => 'Kata sandi minimal :min karakter.',
         ];
     }
 }

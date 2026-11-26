@@ -29,6 +29,7 @@ trait ValidatesShareTargets
     protected function shareableTeacherRule(): Exists
     {
         return Rule::exists('users', 'id')
+            ->withoutTrashed()
             ->where('role', UserRole::Guru->value)
             ->whereNot('id', $this->user()?->id);
     }

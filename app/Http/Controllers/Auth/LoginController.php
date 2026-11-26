@@ -13,6 +13,17 @@ use Inertia\Response;
 class LoginController extends Controller
 {
     /**
+     * Seeded demo accounts offered as one-click sign-in on a local machine only.
+     *
+     * @var list<array{label: string, login: string, password: string}>
+     */
+    private const array DEMO_ACCOUNTS = [
+        ['label' => 'Admin', 'login' => 'admin@falcon.sch.id', 'password' => 'admin123'],
+        ['label' => 'Guru', 'login' => 'budi@falcon.sch.id', 'password' => 'guru123'],
+        ['label' => 'Siswa', 'login' => 'fauzi@falcon.sch.id', 'password' => 'siswa123'],
+    ];
+
+    /**
      * Display the login view.
      */
     public function create(): Response|RedirectResponse
@@ -21,7 +32,9 @@ class LoginController extends Controller
             return redirect()->route('dashboard');
         }
 
-        return Inertia::render('Auth/Login');
+        return Inertia::render('Auth/Login', [
+            'demoAccounts' => app()->isLocal() ? self::DEMO_ACCOUNTS : [],
+        ]);
     }
 
     /**

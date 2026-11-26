@@ -24,7 +24,11 @@ function restore(item: TrashedItem): void {
 }
 
 function forceDelete(item: TrashedItem): void {
-    if (confirm(`Hapus permanen "${item.title}"? Data yang dihapus permanen tidak dapat dikembalikan lagi.`)) {
+    if (
+        confirm(
+            `Hapus permanen "${item.title}"? Data yang dihapus permanen tidak dapat dikembalikan lagi.`,
+        )
+    ) {
         router.delete(`/tempat-sampah/${item.kind}/${item.id}`);
     }
 }
@@ -37,32 +41,54 @@ function forceDelete(item: TrashedItem): void {
         <AuthenticatedLayout title="Tempat Sampah">
             <template #header>
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+                    <h1
+                        class="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl"
+                    >
                         Tempat Sampah
                     </h1>
                     <p class="mt-0.5 text-xs text-slate-500">
-                        Berkas, materi, atau kelas yang dihapus sementara dapat dipulihkan atau dihapus permanen.
+                        Berkas, materi, atau kelas yang dihapus sementara dapat
+                        dipulihkan atau dihapus permanen.
                     </p>
                 </div>
             </template>
 
             <template #default>
                 <!-- Siswa notice -->
-                <div v-if="user?.role === 'siswa'" class="rounded-2xl border border-slate-200 bg-white p-8 text-center">
-                    <p class="text-sm text-slate-600">Tempat sampah hanya dapat diakses oleh Guru dan Administrator.</p>
+                <div
+                    v-if="user?.role === 'siswa'"
+                    class="rounded-2xl border border-slate-200 bg-white p-8 text-center"
+                >
+                    <p class="text-sm text-slate-600">
+                        Tempat sampah hanya dapat diakses oleh Guru dan
+                        Administrator.
+                    </p>
                 </div>
 
                 <!-- Empty State -->
-                <div v-else-if="items.length === 0" class="rounded-2xl border border-dashed border-slate-200 p-10 text-center">
-                    <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+                <div
+                    v-else-if="items.length === 0"
+                    class="rounded-2xl border border-dashed border-slate-200 p-10 text-center"
+                >
+                    <div
+                        class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-500"
+                    >
                         <FalconIcon name="trash" className="w-6 h-6" />
                     </div>
-                    <p class="font-semibold text-slate-800">Tempat sampah kosong.</p>
-                    <p class="mt-1 text-xs text-slate-400">Tidak ada item atau kelas yang sedang berada di tempat sampah.</p>
+                    <p class="font-semibold text-slate-800">
+                        Tempat sampah kosong.
+                    </p>
+                    <p class="mt-1 text-xs text-slate-400">
+                        Tidak ada item atau kelas yang sedang berada di tempat
+                        sampah.
+                    </p>
                 </div>
 
                 <!-- Trashed Items List -->
-                <div v-else class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
+                <div
+                    v-else
+                    class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs"
+                >
                     <div class="divide-y divide-slate-100">
                         <div
                             v-for="item in items"
@@ -71,13 +97,25 @@ function forceDelete(item: TrashedItem): void {
                         >
                             <div>
                                 <div class="flex items-center gap-2">
-                                    <span class="rounded bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 uppercase">
-                                        {{ item.kind === 'class' ? 'Kelas' : 'Materi' }}
+                                    <span
+                                        class="rounded bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 uppercase"
+                                    >
+                                        {{
+                                            item.kind === 'class'
+                                                ? 'Kelas'
+                                                : 'Materi'
+                                        }}
                                     </span>
-                                    <h2 class="font-bold text-slate-900">{{ item.title }}</h2>
+                                    <h2 class="font-bold text-slate-900">
+                                        {{ item.title }}
+                                    </h2>
                                 </div>
-                                <p class="mt-1 text-xs text-slate-500">{{ item.subtitle }}</p>
-                                <p class="mt-0.5 text-[11px] text-slate-400">Dihapus pada: {{ item.deleted_at }}</p>
+                                <p class="mt-1 text-xs text-slate-500">
+                                    {{ item.subtitle }}
+                                </p>
+                                <p class="mt-0.5 text-[11px] text-slate-400">
+                                    Dihapus pada: {{ item.deleted_at }}
+                                </p>
                             </div>
 
                             <div class="flex items-center gap-2">
@@ -103,4 +141,3 @@ function forceDelete(item: TrashedItem): void {
         </AuthenticatedLayout>
     </div>
 </template>
-

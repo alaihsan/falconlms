@@ -121,7 +121,7 @@ class UserController extends Controller
     }
 
     /**
-     * Remove the specified user.
+     * Soft-delete the specified user: the account can no longer sign in, but its classes, content, and grades stay.
      */
     public function destroy(Request $request, User $user): RedirectResponse
     {
@@ -133,7 +133,7 @@ class UserController extends Controller
         $user->delete();
 
         return redirect()->route('admin.users.index')
-            ->with('success', 'Pengguna berhasil dihapus.');
+            ->with('success', "Pengguna \"{$user->name}\" dihapus. Kelas, konten, dan nilai miliknya tetap tersimpan.");
     }
 
     /**

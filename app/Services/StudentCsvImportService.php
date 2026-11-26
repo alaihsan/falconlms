@@ -8,11 +8,18 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class StudentCsvImportService
 {
+    /**
+     * Shortest initial password accepted for an imported student; rows with a shorter or missing password are skipped.
+     */
+    public const int MIN_PASSWORD_LENGTH = 8;
+
     /**
      * Import students from an uploaded CSV file.
      *
@@ -63,15 +70,16 @@ class StudentCsvImportService
                 $name = trim($row[0] ?? '');
                 $email = strtolower(trim($row[1] ?? ''));
                 $username = isset($row[2]) ? trim($row[2]) : null;
-                $password = isset($row[3]) && trim($row[3]) !== '' ? trim($row[3]) : 'siswa123';
+                $password = trim($row[3] ?? '');
 
-                if ($name === '' || $email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                if ($name === '' || $email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)
+                    || Str::length($password) < self::MIN_PASSWORD_LENGTH) {
                     $skipped++;
 
                     continue;
                 }
 
-                $exists = User::query()
+                $exists = User::withTrashed()
                     ->where('email', $email)
                     ->when($username, fn (Builder $q) => $q->orWhere('username', $username))
                     ->exists();
@@ -99,10 +107,11 @@ class StudentCsvImportService
         } catch (Throwable $e) {
             fclose($handle);
             DB::rollBack();
+            report($e);
 
             return [
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat mengimpor data: '.$e->getMessage(),
+                'message' => 'Terjadi kesalahan saat mengimpor data. Tidak ada siswa yang disimpan; periksa isi berkas lalu coba lagi.',
                 'imported' => 0,
                 'skipped' => 0,
             ];
@@ -110,7 +119,7 @@ class StudentCsvImportService
 
         $message = "Berhasil mengimpor {$imported} siswa.";
         if ($skipped > 0) {
-            $message .= " {$skipped} baris dilewati karena duplikasi atau data tidak lengkap.";
+            $message .= " {$skipped} baris dilewati karena duplikasi, data tidak lengkap, atau kata sandi kurang dari ".self::MIN_PASSWORD_LENGTH.' karakter.';
         }
 
         return [
@@ -133,9 +142,14 @@ class StudentCsvImportService
 
         return response()->stream(function (): void {
             $handle = fopen('php://output', 'w');
+
+            if ($handle === false) {
+                throw new RuntimeException('Tidak dapat membuka aliran keluaran untuk templat CSV.');
+            }
+
             fputcsv($handle, ['nama', 'email', 'username', 'password']);
-            fputcsv($handle, ['Ahmad Fauzi', 'fauzi@falcon.sch.id', 'siswa01', 'siswa123']);
-            fputcsv($handle, ['Siti Nurhaliza', 'siti@falcon.sch.id', 'siswa02', 'siswa123']);
+            fputcsv($handle, ['Ahmad Fauzi', 'fauzi@falcon.sch.id', 'siswa01', 'Fauzi#2026']);
+            fputcsv($handle, ['Siti Nurhaliza', 'siti@falcon.sch.id', 'siswa02', 'Siti#2026']);
             fclose($handle);
         }, 200, $headers);
     }

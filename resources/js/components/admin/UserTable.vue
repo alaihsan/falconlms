@@ -63,7 +63,9 @@ const emit = defineEmits<{
                                 </div>
                             </div>
                         </td>
-                        <td class="px-5 py-3.5 font-mono text-xs text-slate-600">
+                        <td
+                            class="px-5 py-3.5 font-mono text-xs text-slate-600"
+                        >
                             {{ u.username || '-' }}
                         </td>
                         <td class="px-5 py-3.5">
@@ -158,24 +160,24 @@ const emit = defineEmits<{
                                 : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100',
                         ]"
                     >
-                        <span
-                            v-if="link.label.includes('Previous')"
-                        >&laquo; Sebelumnya</span>
-                        <span
-                            v-else-if="link.label.includes('Next')"
-                        >Berikutnya &raquo;</span>
+                        <span v-if="link.label.includes('Previous')"
+                            >&laquo; Sebelumnya</span
+                        >
+                        <span v-else-if="link.label.includes('Next')"
+                            >Berikutnya &raquo;</span
+                        >
                         <span v-else>{{ link.label }}</span>
                     </Link>
                     <span
                         v-else
                         class="rounded-lg border border-transparent px-2.5 py-1 text-xs text-slate-300 select-none"
                     >
-                        <span
-                            v-if="link.label.includes('Previous')"
-                        >&laquo; Sebelumnya</span>
-                        <span
-                            v-else-if="link.label.includes('Next')"
-                        >Berikutnya &raquo;</span>
+                        <span v-if="link.label.includes('Previous')"
+                            >&laquo; Sebelumnya</span
+                        >
+                        <span v-else-if="link.label.includes('Next')"
+                            >Berikutnya &raquo;</span
+                        >
                         <span v-else>{{ link.label }}</span>
                     </span>
                 </template>
@@ -183,4 +185,3 @@ const emit = defineEmits<{
         </div>
     </div>
 </template>
-

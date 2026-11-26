@@ -99,13 +99,8 @@ class DocumentPreviewService
         }
 
         try {
-            return Cache::lock("document-preview:{$previewPath}", 120)->block(100, function () use ($disk, $item, $previewPath): ?string {
-                if ($disk->exists($previewPath)) {
-                    return $previewPath;
-                }
-
-                return $this->convert($disk->path((string) $item->attachment_path), $previewPath) ? $previewPath : null;
-            });
+            return Cache::lock("document-preview:{$previewPath}", 120)
+                ->block(100, fn (): ?string => $this->convertUnlessCached($item, $previewPath));
         } catch (Throwable $exception) {
             Log::warning('Document preview conversion failed.', [
                 'learning_item_id' => $item->id,
@@ -114,6 +109,20 @@ class DocumentPreviewService
 
             return null;
         }
+    }
+
+    /**
+     * Convert the attachment unless another request stored the rendition while this one waited for the lock.
+     */
+    private function convertUnlessCached(LearningItem $item, string $previewPath): ?string
+    {
+        $disk = Storage::disk(LearningItem::ATTACHMENT_DISK);
+
+        if ($disk->exists($previewPath)) {
+            return $previewPath;
+        }
+
+        return $this->convert($disk->path((string) $item->attachment_path), $previewPath) ? $previewPath : null;
     }
 
     /**
@@ -149,7 +158,7 @@ class DocumentPreviewService
                 return false;
             }
 
-            return Storage::disk(LearningItem::ATTACHMENT_DISK)->put($previewPath, File::get($convertedFile));
+            return Storage::disk(LearningItem::ATTACHMENT_DISK)->put($previewPath, File::get($convertedFile)) !== false;
         } finally {
             File::deleteDirectory($workDirectory);
         }

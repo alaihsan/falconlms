@@ -208,9 +208,7 @@ function deleteClass(schoolClass: SchoolClassItem): void {
                                 {{ c.description }}
                             </p>
 
-                            <div
-                                class="mt-4 space-y-1 text-xs text-slate-400"
-                            >
+                            <div class="mt-4 space-y-1 text-xs text-slate-400">
                                 <p>Guru: {{ c.guru_name }}</p>
                                 <p v-if="c.room">Ruang: {{ c.room }}</p>
                             </div>
@@ -219,7 +217,7 @@ function deleteClass(schoolClass: SchoolClassItem): void {
                         <div
                             class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs"
                         >
-                            <span class="text-slate-500 font-medium">
+                            <span class="font-medium text-slate-500">
                                 {{ c.students_count }} Siswa •
                                 {{ c.items_count }} Materi
                             </span>
@@ -466,9 +464,11 @@ function deleteClass(schoolClass: SchoolClassItem): void {
                                     type="text"
                                     required
                                     placeholder="misal: RPL10A"
-                                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-mono text-center text-lg font-bold uppercase tracking-widest focus:border-indigo-600 focus:outline-hidden"
+                                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-center font-mono text-lg font-bold tracking-widest uppercase focus:border-indigo-600 focus:outline-hidden"
                                 />
-                                <p class="mt-1 text-center text-xs text-slate-400">
+                                <p
+                                    class="mt-1 text-center text-xs text-slate-400"
+                                >
                                     Masukkan 6 karakter kode kelas
                                 </p>
                             </div>
@@ -502,4 +502,3 @@ function deleteClass(schoolClass: SchoolClassItem): void {
         </AuthenticatedLayout>
     </div>
 </template>
-

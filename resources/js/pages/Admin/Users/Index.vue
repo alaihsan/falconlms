@@ -7,7 +7,12 @@ import UserTable from '@/components/admin/UserTable.vue';
 import UserCreateModal from '@/components/admin/UserCreateModal.vue';
 import UserEditModal from '@/components/admin/UserEditModal.vue';
 import UserImportCsvModal from '@/components/admin/UserImportCsvModal.vue';
-import type { PaginatedUsers, RoleOption, SharedProps, UserItem } from '@/types';
+import type {
+    PaginatedUsers,
+    RoleOption,
+    SharedProps,
+    UserItem,
+} from '@/types';
 
 const props = defineProps<{
     users: PaginatedUsers;
@@ -54,7 +59,11 @@ function closeEditModal(): void {
 }
 
 function deleteUser(user: UserItem): void {
-    if (confirm(`Apakah Anda yakin ingin menghapus akun "${user.name}"?`)) {
+    if (
+        confirm(
+            `Hapus akun "${user.name}"? Akun ini tidak bisa login lagi, tetapi kelas, konten, dan nilainya tetap tersimpan.`,
+        )
+    ) {
         router.delete(`/admin/users/${user.id}`);
     }
 }

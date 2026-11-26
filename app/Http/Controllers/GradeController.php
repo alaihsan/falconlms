@@ -44,7 +44,7 @@ class GradeController extends Controller
         $this->ensureTeaches($request, $schoolClass);
 
         /** @var array<int, array{learning_item_id: int, siswa_id: int, score: int|null}> $entries */
-        $entries = collect($request->validated('scores'))
+        $entries = $request->safe()->collect('scores')
             ->map(fn (array $entry): array => [
                 'learning_item_id' => (int) $entry['learning_item_id'],
                 'siswa_id' => (int) $entry['siswa_id'],

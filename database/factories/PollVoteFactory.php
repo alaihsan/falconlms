@@ -21,7 +21,10 @@ class PollVoteFactory extends Factory
     {
         return [
             'poll_option_id' => PollOption::factory(),
-            'learning_item_id' => fn (array $attributes): int => PollOption::findOrFail($attributes['poll_option_id'])->learning_item_id,
+            'learning_item_id' => fn (array $attributes): int => PollOption::query()
+                ->whereKey($attributes['poll_option_id'])
+                ->firstOrFail()
+                ->learning_item_id,
             'user_id' => User::factory()->siswa(),
         ];
     }

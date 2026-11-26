@@ -47,6 +47,7 @@ export default defineConfig({
             'resources/js/components/ui/*',
             'resources/js/routes/**',
             'resources/js/wayfinder/**',
+            'resources/h5p-standalone/**',
         ],
         options: {
             denyWarnings: true,
@@ -65,6 +66,7 @@ export default defineConfig({
             'composer.json',
             'resources/js/components/ui/*',
             'resources/views/mail/*',
+            'resources/h5p-standalone/**',
         ],
         sortTailwindcss: {
             functions: ['clsx', 'cn', 'cva'],

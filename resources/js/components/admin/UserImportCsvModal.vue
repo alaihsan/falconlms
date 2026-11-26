@@ -89,8 +89,8 @@ function submitImport(): void {
                         pertama.
                     </li>
                     <li>
-                        Bila password dikosongkan, default kata sandi adalah
-                        <code class="font-mono">siswa123</code>.
+                        Kolom password <strong>wajib diisi</strong>, minimal 8
+                        karakter. Baris tanpa password dilewati.
                     </li>
                 </ul>
                 <div class="mt-3">
@@ -155,4 +155,3 @@ function submitImport(): void {
         </div>
     </div>
 </template>
-

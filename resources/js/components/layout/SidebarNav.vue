@@ -293,4 +293,3 @@ function handleQuickAction(actionType: string): void {
         </div>
     </aside>
 </template>
-

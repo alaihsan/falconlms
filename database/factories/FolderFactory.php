@@ -21,7 +21,7 @@ class FolderFactory extends Factory
         return [
             'user_id' => User::factory()->guru(),
             'parent_id' => null,
-            'name' => 'Folder '.fake()->words(2, true),
+            'name' => 'Folder '.fake()->word().' '.fake()->word(),
         ];
     }
 }

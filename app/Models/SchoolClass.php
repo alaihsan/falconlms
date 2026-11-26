@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\SchoolClassFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +26,7 @@ use Illuminate\Support\Carbon;
 #[Fillable(['name', 'subject', 'room', 'code', 'description', 'guru_id'])]
 class SchoolClass extends Model
 {
+    /** @use HasFactory<SchoolClassFactory> */
     use HasFactory, SoftDeletes;
 
     /**

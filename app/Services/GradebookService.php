@@ -12,6 +12,7 @@ use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GradebookService
@@ -96,6 +97,11 @@ class GradebookService
 
         return response()->streamDownload(function () use ($items, $students, $scores): void {
             $handle = fopen('php://output', 'w');
+
+            if ($handle === false) {
+                throw new RuntimeException('Tidak dapat membuka aliran keluaran untuk ekspor buku nilai.');
+            }
+
             fwrite($handle, "\u{FEFF}");
 
             fputcsv($handle, [
@@ -302,6 +308,11 @@ class GradebookService
             ->first();
 
         $stream = fopen('php://temp', 'r+');
+
+        if ($stream === false) {
+            throw new RuntimeException('Tidak dapat membuka penyimpanan sementara untuk membaca CSV.');
+        }
+
         fwrite($stream, $contents);
         rewind($stream);
 

@@ -148,8 +148,16 @@ class LibraryController extends Controller
             ),
         ];
 
+        $attachmentPath = null;
+
         if ($attachment !== null) {
-            $attributes['attachment_path'] = $attachment->store("library/{$user->id}", LearningItem::ATTACHMENT_DISK);
+            $attachmentPath = $attachment->store("library/{$user->id}", LearningItem::ATTACHMENT_DISK);
+
+            if ($attachmentPath === false) {
+                throw ValidationException::withMessages(['attachment' => 'Berkas gagal disimpan. Silakan coba lagi.']);
+            }
+
+            $attributes['attachment_path'] = $attachmentPath;
             $attributes['attachment_name'] = $attachment->getClientOriginalName();
             $attributes['attachment_mime'] = $attachment->getMimeType();
             $attributes['attachment_size'] = $attachment->getSize();
@@ -159,19 +167,23 @@ class LibraryController extends Controller
             try {
                 $this->h5pPackages->extract(new LearningItem($attributes));
             } catch (ValidationException $exception) {
-                Storage::disk(LearningItem::ATTACHMENT_DISK)->delete($attributes['attachment_path']);
+                if ($attachmentPath !== null) {
+                    Storage::disk(LearningItem::ATTACHMENT_DISK)->delete($attachmentPath);
+                }
 
                 throw $exception;
             }
         }
 
-        $item = DB::transaction(function () use ($attributes, $validated): LearningItem {
+        $pollOptions = $request->safe()->collect('poll_options');
+
+        $item = DB::transaction(function () use ($attributes, $validated, $pollOptions): LearningItem {
             $item = LearningItem::create($attributes);
             $item->classes()->sync($validated['class_ids'] ?? []);
 
             if ($item->type === 'poll') {
                 $item->pollOptions()->createMany(
-                    collect($validated['poll_options'])
+                    $pollOptions
                         ->values()
                         ->map(fn (string $label, int $position): array => ['label' => $label, 'position' => $position])
                         ->all(),
@@ -194,7 +206,7 @@ class LibraryController extends Controller
         $this->ensureManageable($learningItem, $user);
 
         $validated = $request->validated();
-        $requestedClassIds = collect($validated['class_ids'])->map(fn (mixed $id): int => (int) $id);
+        $requestedClassIds = $request->safe()->collect('class_ids')->map(fn (mixed $id): int => (int) $id);
 
         DB::transaction(function () use ($learningItem, $user, $requestedClassIds, $validated): void {
             $controllableClassIds = $learningItem->classes()

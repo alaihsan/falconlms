@@ -134,3 +134,98 @@ test('soft-deleted class and item can be restored or force-deleted', function ()
     $this->actingAs($guru)->delete(route('trash.force-delete', ['kind' => 'class', 'id' => $class->id]));
     expect(SchoolClass::withTrashed()->find($class->id))->toBeNull();
 });
+
+test('siswa can change an answer that has not been graded yet', function () {
+    $siswa = User::factory()->siswa()->create();
+    $class = SchoolClass::factory()->create();
+    $class->students()->attach($siswa->id);
+    $assignment = LearningItem::factory()->hasAttached($class, relationship: 'classes')->create(['type' => 'assignment']);
+    AssignmentSubmission::factory()->create([
+        'learning_item_id' => $assignment->id,
+        'siswa_id' => $siswa->id,
+        'answer_text' => 'Jawaban pertama.',
+        'score' => null,
+        'graded_at' => null,
+    ]);
+
+    $response = $this->actingAs($siswa)->post(route('tasks.submit', $assignment), [
+        'answer_text' => 'Jawaban yang diperbaiki.',
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success');
+    $this->assertDatabaseHas('assignment_submissions', [
+        'learning_item_id' => $assignment->id,
+        'siswa_id' => $siswa->id,
+        'answer_text' => 'Jawaban yang diperbaiki.',
+    ]);
+});
+
+test('siswa cannot change an answer after it has been graded', function () {
+    $siswa = User::factory()->siswa()->create();
+    $class = SchoolClass::factory()->create();
+    $class->students()->attach($siswa->id);
+    $assignment = LearningItem::factory()->hasAttached($class, relationship: 'classes')->create([
+        'type' => 'assignment',
+        'title' => 'Tugas ERD',
+    ]);
+    $submission = AssignmentSubmission::factory()->create([
+        'learning_item_id' => $assignment->id,
+        'siswa_id' => $siswa->id,
+        'answer_text' => 'Jawaban yang dinilai.',
+        'score' => 90,
+        'graded_at' => now(),
+    ]);
+
+    $response = $this->actingAs($siswa)->post(route('tasks.submit', $assignment), [
+        'answer_text' => 'Jawaban baru setelah dinilai.',
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHas('error', 'Jawaban untuk "Tugas ERD" sudah dinilai sehingga tidak dapat diubah lagi.');
+    $submission->refresh();
+    expect($submission->answer_text)->toBe('Jawaban yang dinilai.');
+    expect($submission->score)->toBe(90);
+});
+
+test('a grade above the item maximum score is rejected', function () {
+    $guru = User::factory()->guru()->create();
+    $assignment = LearningItem::factory()->create([
+        'user_id' => $guru->id,
+        'type' => 'assignment',
+        'max_score' => 50,
+    ]);
+    $submission = AssignmentSubmission::factory()->create([
+        'learning_item_id' => $assignment->id,
+        'score' => null,
+        'graded_at' => null,
+    ]);
+
+    $response = $this->actingAs($guru)->post(route('tasks.grade', $submission), [
+        'score' => 51,
+    ]);
+
+    $response->assertSessionHasErrors(['score' => 'Nilai untuk tugas ini maksimal 50.']);
+    expect($submission->refresh()->score)->toBeNull();
+});
+
+test('a grade equal to the item maximum score is saved', function () {
+    $guru = User::factory()->guru()->create();
+    $assignment = LearningItem::factory()->create([
+        'user_id' => $guru->id,
+        'type' => 'assignment',
+        'max_score' => 50,
+    ]);
+    $submission = AssignmentSubmission::factory()->create([
+        'learning_item_id' => $assignment->id,
+        'score' => null,
+        'graded_at' => null,
+    ]);
+
+    $response = $this->actingAs($guru)->post(route('tasks.grade', $submission), [
+        'score' => 50,
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    expect($submission->refresh()->score)->toBe(50);
+});

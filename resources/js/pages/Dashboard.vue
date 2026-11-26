@@ -94,10 +94,13 @@ const user = computed(() => page.props.auth.user);
                             <div
                                 class="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs"
                             >
-                                <span class="text-xs font-semibold text-slate-500"
+                                <span
+                                    class="text-xs font-semibold text-slate-500"
                                     >Total Pengguna</span
                                 >
-                                <p class="mt-2 text-3xl font-bold text-slate-900">
+                                <p
+                                    class="mt-2 text-3xl font-bold text-slate-900"
+                                >
                                     {{ stats.total_users ?? 0 }}
                                 </p>
                                 <Link
@@ -110,10 +113,13 @@ const user = computed(() => page.props.auth.user);
                             <div
                                 class="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs"
                             >
-                                <span class="text-xs font-semibold text-slate-500"
+                                <span
+                                    class="text-xs font-semibold text-slate-500"
                                     >Total Guru</span
                                 >
-                                <p class="mt-2 text-3xl font-bold text-slate-900">
+                                <p
+                                    class="mt-2 text-3xl font-bold text-slate-900"
+                                >
                                     {{ stats.total_guru ?? 0 }}
                                 </p>
                                 <p class="mt-3 text-xs text-slate-400">
@@ -123,10 +129,13 @@ const user = computed(() => page.props.auth.user);
                             <div
                                 class="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs"
                             >
-                                <span class="text-xs font-semibold text-slate-500"
+                                <span
+                                    class="text-xs font-semibold text-slate-500"
                                     >Total Siswa</span
                                 >
-                                <p class="mt-2 text-3xl font-bold text-slate-900">
+                                <p
+                                    class="mt-2 text-3xl font-bold text-slate-900"
+                                >
                                     {{ stats.total_siswa ?? 0 }}
                                 </p>
                                 <Link
@@ -142,10 +151,13 @@ const user = computed(() => page.props.auth.user);
                             <div
                                 class="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs"
                             >
-                                <span class="text-xs font-semibold text-slate-500"
+                                <span
+                                    class="text-xs font-semibold text-slate-500"
                                     >Kelas yang Diampu</span
                                 >
-                                <p class="mt-2 text-3xl font-bold text-slate-900">
+                                <p
+                                    class="mt-2 text-3xl font-bold text-slate-900"
+                                >
                                     {{ stats.total_classes ?? 0 }}
                                 </p>
                                 <Link
@@ -158,10 +170,13 @@ const user = computed(() => page.props.auth.user);
                             <div
                                 class="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs"
                             >
-                                <span class="text-xs font-semibold text-slate-500"
+                                <span
+                                    class="text-xs font-semibold text-slate-500"
                                     >Total Materi & Tugas</span
                                 >
-                                <p class="mt-2 text-3xl font-bold text-slate-900">
+                                <p
+                                    class="mt-2 text-3xl font-bold text-slate-900"
+                                >
                                     {{ stats.total_items ?? 0 }}
                                 </p>
                                 <Link
@@ -174,10 +189,13 @@ const user = computed(() => page.props.auth.user);
                             <div
                                 class="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs"
                             >
-                                <span class="text-xs font-semibold text-slate-500"
+                                <span
+                                    class="text-xs font-semibold text-slate-500"
                                     >Menunggu Penilaian</span
                                 >
-                                <p class="mt-2 text-3xl font-bold text-amber-600">
+                                <p
+                                    class="mt-2 text-3xl font-bold text-amber-600"
+                                >
                                     {{ stats.pending_grading ?? 0 }}
                                 </p>
                                 <Link
@@ -193,10 +211,13 @@ const user = computed(() => page.props.auth.user);
                             <div
                                 class="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs"
                             >
-                                <span class="text-xs font-semibold text-slate-500"
+                                <span
+                                    class="text-xs font-semibold text-slate-500"
                                     >Kelas Diikuti</span
                                 >
-                                <p class="mt-2 text-3xl font-bold text-slate-900">
+                                <p
+                                    class="mt-2 text-3xl font-bold text-slate-900"
+                                >
                                     {{ stats.enrolled_classes ?? 0 }}
                                 </p>
                                 <Link
@@ -209,10 +230,13 @@ const user = computed(() => page.props.auth.user);
                             <div
                                 class="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs"
                             >
-                                <span class="text-xs font-semibold text-slate-500"
+                                <span
+                                    class="text-xs font-semibold text-slate-500"
                                     >Tugas Belum Dikerjakan</span
                                 >
-                                <p class="mt-2 text-3xl font-bold text-amber-600">
+                                <p
+                                    class="mt-2 text-3xl font-bold text-amber-600"
+                                >
                                     {{ stats.pending_tasks ?? 0 }}
                                 </p>
                                 <Link
@@ -225,7 +249,8 @@ const user = computed(() => page.props.auth.user);
                             <div
                                 class="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs"
                             >
-                                <span class="text-xs font-semibold text-slate-500"
+                                <span
+                                    class="text-xs font-semibold text-slate-500"
                                     >Tugas Terkumpul</span
                                 >
                                 <p
@@ -346,7 +371,8 @@ const user = computed(() => page.props.auth.user);
                                         >
                                             {{ item.type_label }}
                                         </span>
-                                        <span class="text-[11px] text-slate-400"
+                                        <span
+                                            class="text-[11px] text-slate-400"
                                             >{{ item.class_name }}</span
                                         >
                                     </div>
@@ -355,7 +381,9 @@ const user = computed(() => page.props.auth.user);
                                     >
                                         {{ item.title }}
                                     </p>
-                                    <p class="mt-0.5 text-[11px] text-slate-500">
+                                    <p
+                                        class="mt-0.5 text-[11px] text-slate-500"
+                                    >
                                         Oleh {{ item.author_name }}
                                         <span v-if="item.due_at">
                                             • Tenggat: {{ item.due_at }}

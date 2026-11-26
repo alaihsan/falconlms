@@ -190,4 +190,3 @@ function submitGlobalSearch(): void {
         </div>
     </header>
 </template>
-

@@ -4,6 +4,10 @@ import { Head, useForm } from '@inertiajs/vue3';
 import GuestLayout from '@/layouts/GuestLayout.vue';
 import FalconIcon from '@/components/ui/FalconIcon.vue';
 
+defineProps<{
+    demoAccounts: Array<{ label: string; login: string; password: string }>;
+}>();
+
 const showPassword = ref(false);
 
 const form = useForm({
@@ -154,8 +158,11 @@ function fillDemo(loginVal: string, passVal: string): void {
                 </button>
             </form>
 
-            <!-- Quick Demo Credentials for Intranet Testing -->
-            <div class="mt-6 border-t border-slate-100 pt-5">
+            <!-- Quick Demo Credentials, sent by the server on a local machine only -->
+            <div
+                v-if="demoAccounts.length > 0"
+                class="mt-6 border-t border-slate-100 pt-5"
+            >
                 <p
                     class="mb-2 text-center text-[11px] font-semibold tracking-wider text-slate-400 uppercase"
                 >
@@ -163,25 +170,13 @@ function fillDemo(loginVal: string, passVal: string): void {
                 </p>
                 <div class="grid grid-cols-3 gap-2">
                     <button
+                        v-for="account in demoAccounts"
+                        :key="account.login"
                         type="button"
                         class="rounded-lg border border-slate-200 bg-slate-100 p-2 text-center text-[11px] font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700"
-                        @click="fillDemo('admin@falcon.sch.id', 'admin123')"
+                        @click="fillDemo(account.login, account.password)"
                     >
-                        Admin
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded-lg border border-slate-200 bg-slate-100 p-2 text-center text-[11px] font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700"
-                        @click="fillDemo('budi@falcon.sch.id', 'guru123')"
-                    >
-                        Guru
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded-lg border border-slate-200 bg-slate-100 p-2 text-center text-[11px] font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700"
-                        @click="fillDemo('fauzi@falcon.sch.id', 'siswa123')"
-                    >
-                        Siswa
+                        {{ account.label }}
                     </button>
                 </div>
             </div>
